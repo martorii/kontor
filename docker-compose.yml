@@ -14,7 +14,7 @@ services:
       retries: 10
 
   migrate:
-    image: ghcr.io/martorii/kontor-api:${KONTOR_TAG:-v0.0.0} # x-release-please-version
+    image: ghcr.io/martorii/kontor-api:${KONTOR_TAG:-v0.1.0} # x-release-please-version
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
@@ -26,7 +26,7 @@ services:
 
   api:
     build: .
-    image: ghcr.io/martorii/kontor-api:${KONTOR_TAG:-v0.0.0} # x-release-please-version
+    image: ghcr.io/martorii/kontor-api:${KONTOR_TAG:-v0.1.0} # x-release-please-version
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
