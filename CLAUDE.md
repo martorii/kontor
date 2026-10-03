@@ -23,6 +23,7 @@ Kontor is a local, single-user app. It ingests bank CSV exports, categorizes eac
 uv sync                      # install dependencies
 make lint                    # uv run ruff check .
 make format                  # uv run ruff format .
+make format-check            # uv run ruff format --check .
 make typecheck               # uv run mypy src tests
 make test                    # uv run pytest (excludes -m llm)
 make test-llm                # tests against the real LM Studio (local only)
