@@ -1,4 +1,4 @@
-.PHONY: lint format format-check typecheck test migrate-check
+.PHONY: lint format format-check typecheck test migrate-check deploy rollback
 
 lint:
 	uv run ruff check .
@@ -19,3 +19,17 @@ test:
 migrate-check:
 	uv run alembic upgrade head
 	uv run alembic check
+
+# Run the pinned release images (KONTOR_TAG in .env, default kept current by release-please).
+deploy:
+	docker compose pull
+	docker compose up -d
+
+# Pin a previous release: make rollback TAG=vX.Y.Z
+rollback:
+	@test -n "$(TAG)" || { echo "usage: make rollback TAG=vX.Y.Z"; exit 1; }
+	@touch .env
+	@grep -v '^KONTOR_TAG=' .env > .env.tmp || true
+	@echo 'KONTOR_TAG=$(TAG)' >> .env.tmp
+	@mv .env.tmp .env
+	$(MAKE) deploy
