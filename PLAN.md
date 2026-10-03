@@ -28,7 +28,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
   - `pre-commit run --all-files` passes.
 
 ### Step 02 — CI pipeline
-- [ ] **Scope**
+- [x] **Scope**
   - GitHub Actions workflow running ruff, the format check, mypy, pytest, and gitleaks on every PR
   - branch protection on `main` requiring these checks
 - **Pass gate**
