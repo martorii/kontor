@@ -46,7 +46,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
   - A test asserts that the JSON log mode emits valid JSON.
 
 ### Step 04 — Docker Compose and Postgres
-- [ ] **Scope**
+- [x] **Scope**
   - a multi-stage Dockerfile for the API, built with uv
   - `docker-compose.yml` with `postgres` and `api`, both with health checks
   - a named volume for the Postgres data
