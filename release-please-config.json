@@ -5,7 +5,14 @@
   "packages": {
     ".": {
       "package-name": "kontor",
-      "extra-files": ["docker-compose.yml"]
+      "extra-files": [
+        "docker-compose.yml",
+        {
+          "type": "toml",
+          "path": "uv.lock",
+          "jsonpath": "$.package[?(@.name=='kontor')].version"
+        }
+      ]
     }
   }
 }
