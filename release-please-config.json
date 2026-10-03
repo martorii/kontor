@@ -10,7 +10,7 @@
         {
           "type": "toml",
           "path": "uv.lock",
-          "jsonpath": "$.package[?(@.name=='kontor')].version"
+          "jsonpath": "$.package[?(@.name.value=='kontor')].version"
         }
       ]
     }
