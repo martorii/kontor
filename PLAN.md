@@ -57,7 +57,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
   - The CI image build is green.
 
 ### Step 05 — Database schema and migrations
-- [ ] **Scope**
+- [x] **Scope**
   - SQLAlchemy models for the tables in CONTRACT §10
   - an initial Alembic migration
   - the one-shot `migrate` service in compose; `api` depends on it
