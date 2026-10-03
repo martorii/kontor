@@ -18,6 +18,9 @@ WORKDIR /app
 COPY --from=builder --chown=kontor:kontor /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
 
+COPY --chown=kontor:kontor alembic.ini ./
+COPY --chown=kontor:kontor migrations ./migrations
+
 USER kontor
 EXPOSE 8000
 CMD ["uvicorn", "--factory", "kontor.api.app:create_app", "--host", "0.0.0.0", "--port", "8000"]

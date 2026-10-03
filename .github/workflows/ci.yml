@@ -11,6 +11,22 @@ permissions:
 jobs:
   checks:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: kontor
+          POSTGRES_PASSWORD: ci-only
+          POSTGRES_DB: kontor
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U kontor -d kontor"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql+psycopg://kontor:ci-only@localhost:5432/kontor
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -19,6 +35,7 @@ jobs:
       - run: make format-check
       - run: make typecheck
       - run: make test
+      - run: make migrate-check
 
   gitleaks:
     runs-on: ubuntu-latest
