@@ -16,7 +16,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
 ## Phase A — Foundation
 
 ### Step 01 — Repository bootstrap
-- [ ] **Scope**
+- [x] **Scope**
   - uv project with `pyproject.toml` and a `src/kontor` layout (see `CLAUDE.md`)
   - ruff, mypy (strict), and pytest configured
   - `.gitignore` covering `.env`, `config/rules.yaml`, `data/`, and eval exports
