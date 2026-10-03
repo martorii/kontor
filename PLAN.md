@@ -69,7 +69,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
   - A test inserts and reads one row per table.
 
 ### Step 06 — Release and CD pipeline
-- [ ] **Scope**
+- [x] **Scope**
   - release-please workflow
   - on each release, build and push the images to GHCR, tagged with the version
   - compose uses pinned image tags
