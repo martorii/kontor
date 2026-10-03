@@ -36,7 +36,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
   - A deliberately failing commit, pushed and then reverted, blocks the merge.
 
 ### Step 03 — API skeleton, configuration, logging
-- [ ] **Scope**
+- [x] **Scope**
   - FastAPI app factory
   - settings via environment variables (a `.env.example` is committed)
   - structlog setup: console output by default, JSON switchable by env var
