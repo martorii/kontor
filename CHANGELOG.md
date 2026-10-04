@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.2](https://github.com/martorii/kontor/compare/kontor-v0.1.1...kontor-v0.1.2) (2026-10-04)
+
+
+### Bug Fixes
+
+* publish multi-arch (amd64, arm64) release image ([464f41b](https://github.com/martorii/kontor/commit/464f41be19cdf5d5b3a8acfbce4795859a639030))
+* publish multi-arch (amd64, arm64) release image ([f46d816](https://github.com/martorii/kontor/commit/f46d8168ae939eab64af435bfaec521f27f8c276))
+
 ## [0.1.1](https://github.com/martorii/kontor/compare/kontor-v0.1.0...kontor-v0.1.1) (2026-10-04)
 
 
