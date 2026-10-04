@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.1](https://github.com/martorii/kontor/compare/kontor-v0.1.0...kontor-v0.1.1) (2026-10-04)
+
+
+### Bug Fixes
+
+* tag release images as v&lt;version&gt; ([47c443b](https://github.com/martorii/kontor/commit/47c443bc9681432ba73b77e5930fc78a4cfb31d5))
+* tag release images as v&lt;version&gt; ([8436cef](https://github.com/martorii/kontor/commit/8436cef26cb9cd192b25bdc800f11ea27570ca34))
+
 ## 0.1.0 (2026-10-03)
 
 
