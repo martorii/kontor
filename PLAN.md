@@ -119,7 +119,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
 ## Phase C — Categorization
 
 ### Step 10 — Category tree and rules YAML
-- [ ] **Scope**
+- [x] **Scope**
   - the Pydantic schema for categories and rules
   - the YAML loader (port + adapter)
   - category sync into the DB at startup

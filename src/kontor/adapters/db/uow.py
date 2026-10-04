@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from kontor.adapters.db.repositories import (
     SqlAccountRepository,
+    SqlCategoryRepository,
     SqlImportRepository,
     SqlTransactionRepository,
 )
@@ -19,6 +20,7 @@ class SqlUnitOfWork:
         self.accounts = SqlAccountRepository(self._session)
         self.imports = SqlImportRepository(self._session)
         self.transactions = SqlTransactionRepository(self._session)
+        self.categories = SqlCategoryRepository(self._session)
         return self
 
     def __exit__(

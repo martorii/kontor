@@ -30,6 +30,10 @@ services:
     env_file: .env
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      RULES_PATH: /app/config/rules.yaml
+    volumes:
+      # The real rules.yaml is gitignored. Copy config/rules.example.yaml to config/rules.yaml.
+      - ./config:/app/config:ro
     ports:
       - "${API_PORT:-8000}:8000"
     depends_on:

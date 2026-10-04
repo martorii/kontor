@@ -46,11 +46,13 @@ A decision changes only when the developer explicitly decides so. Every change i
 
 ## 5. Categories
 
-- **5.1** Categories form a **two-level tree**: top-level category → subcategory. The concrete tree is defined during implementation.
+- **5.1** Categories form a **two-level tree**: top-level category → subcategory. The concrete starting tree is in `config/rules.example.yaml` (e.g. `food.groceries`, `kids.daycare`); the developer adapts it in their own `rules.yaml`.
 - **5.2** The tree is defined in the YAML file together with the rules. Each category has a stable slug ID (e.g. `food.groceries`).
 - **5.3** The tree is synced into a `categories` table at startup. Transactions reference categories by foreign key.
 - **5.4** Every top-level category has a **kind**: `expense`, `income`, `transfer`, or `savings`. Spending reports count only `expense`. Income vs. expenses excludes `transfer` and `savings`.
 - **5.5** Each transaction has **exactly one** category, or none (uncategorized). Split transactions are not part of v1.
+- **5.6** Rules assign **subcategories** only. A top-level category is never a rule target.
+- **5.7** The category sync only inserts and updates. A category removed from the YAML stays in the database, because transactions may still reference it.
 
 ## 6. Rules
 
@@ -67,6 +69,7 @@ A decision changes only when the developer explicitly decides so. Every change i
 - **6.6** Matching runs on **normalized** text: uppercased, with store numbers, dates, and boilerplate stripped.
 - **6.7** Fuzzy matching is **never** used to assign a category automatically.
 - **6.8** The YAML is validated with Pydantic on every load. If the file is invalid, the reload is rejected and the previously loaded rules stay active.
+- **6.8a** At startup there is no previous rules set, so an invalid or missing rules file stops the API with a readable error. The account condition of a rule is the account's IBAN.
 - **6.9** The real `rules.yaml` is gitignored and mounted into the container. The repo contains a `rules.example.yaml` with generic rules.
 
 ## 7. Categorization pipeline
@@ -189,7 +192,6 @@ A decision changes only when the developer explicitly decides so. Every change i
 
 These are decided during implementation and then moved into the sections above:
 
-- **15.1** The concrete category tree.
 - **15.3** How an account is identified for future formats that contain no IBAN.
 - **15.4** The default LLM confidence threshold.
 - **15.5** Whether the repo is public or private.
@@ -201,3 +203,4 @@ These are decided during implementation and then moved into the sections above:
 - **2026-10-03** — Initial contract from scoping.
 - **2026-10-04** — DKB format decided (§3.1, §3.1a): checking account only, credit card out of scope; removed open item 15.2.
 - **2026-10-04** — Failed imports leave no `imports` record (§8.3), so the unique file hash never blocks a retry.
+- **2026-10-04** — Category tree and rules YAML format decided (§5.1, §5.6, §5.7, §6.8a); removed open item 15.1.

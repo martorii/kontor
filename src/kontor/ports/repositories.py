@@ -4,6 +4,7 @@ from typing import Protocol, Self
 
 from kontor.domain.account import Account, NewAccount
 from kontor.domain.imports import ImportCounts, ImportRecord
+from kontor.domain.rules import CategoryDef
 from kontor.domain.transaction import PreparedTransaction
 
 
@@ -39,6 +40,12 @@ class TransactionRepository(Protocol):
     ) -> None: ...
 
 
+class CategoryRepository(Protocol):
+    def upsert_all(self, categories: Sequence[CategoryDef]) -> None:
+        """Insert new categories and update name, parent and kind of existing ones."""
+        ...
+
+
 class UnitOfWork(Protocol):
     """One database transaction. Leaving the block without commit() rolls everything back."""
 
@@ -50,6 +57,9 @@ class UnitOfWork(Protocol):
 
     @property
     def transactions(self) -> TransactionRepository: ...
+
+    @property
+    def categories(self) -> CategoryRepository: ...
 
     def __enter__(self) -> Self: ...
 
