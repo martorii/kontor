@@ -94,7 +94,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
   - overlapping input producing identical fingerprints for the shared rows
 
 ### Step 08 — Parser registry and DKB parser
-- [ ] **Scope**
+- [x] **Scope**
   - the parser port and the registry with header-based detection
   - the DKB parser, including IBAN extraction from the file
   - synthetic DKB fixtures
