@@ -82,7 +82,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
 ## Phase B — Ingestion
 
 ### Step 07 — Domain core
-- [ ] **Scope**
+- [x] **Scope**
   - the canonical transaction model (amounts as `Decimal`)
   - counterparty and purpose normalization
   - fingerprinting with the occurrence index
