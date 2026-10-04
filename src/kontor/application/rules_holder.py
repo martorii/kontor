@@ -25,11 +25,19 @@ class RulesHolder:
         self._config = self._source.load()
         return self._config
 
-    def reload(self) -> RulesConfig:
-        """Validate and activate the file again. Raises on failure, leaving the old rules active."""
+    def validate(self) -> RulesConfig:
+        """Read and validate the file without activating it. Raises on failure."""
         try:
-            self._config = self._source.load()
+            return self._source.load()
         except RulesFileError as exc:
             log.warning("rules_reload_rejected", error=str(exc))
             raise
-        return self._config
+
+    def activate(self, config: RulesConfig) -> None:
+        self._config = config
+
+    def reload(self) -> RulesConfig:
+        """Validate and activate the file again. Raises on failure, leaving the old rules active."""
+        config = self.validate()
+        self.activate(config)
+        return config

@@ -9,8 +9,9 @@ from kontor.adapters.db import models
 from kontor.domain.account import Account, NewAccount
 from kontor.domain.errors import AccountNotFoundError, DuplicateIbanError
 from kontor.domain.imports import ImportCounts, ImportRecord
+from kontor.domain.recategorization import Candidate, Change
 from kontor.domain.rules import CategoryDef
-from kontor.domain.transaction import PreparedTransaction
+from kontor.domain.transaction import PreparedTransaction, Transaction
 
 
 def _account(row: models.Account) -> Account:
@@ -159,6 +160,63 @@ class SqlTransactionRepository:
             )
             for model, row in models_and_rows
             if row.categorization
+        )
+        self._session.flush()
+
+    def list_for_recategorization(self) -> list[Candidate]:
+        stmt = (
+            select(models.Transaction, models.Account.iban)
+            .join(models.Account, models.Account.id == models.Transaction.account_id)
+            .where(models.Transaction.category_source.is_distinct_from("manual"))
+            .order_by(models.Transaction.id)
+        )
+        return [
+            Candidate(
+                transaction_id=row.id,
+                account_iban=iban,
+                prepared=PreparedTransaction(
+                    transaction=Transaction(
+                        booking_date=row.booking_date,
+                        value_date=row.value_date,
+                        amount=row.amount,
+                        currency=row.currency,
+                        counterparty=row.counterparty_raw,
+                        counterparty_iban=row.counterparty_iban,
+                        purpose=row.purpose,
+                    ),
+                    counterparty_normalized=row.counterparty_normalized,
+                    fingerprint=row.fingerprint,
+                ),
+                category_slug=row.category_slug,
+                category_source=row.category_source,
+            )
+            for row, iban in self._session.execute(stmt)
+        ]
+
+    def apply_rule_changes(self, changes: Sequence[Change], rules_hash: str) -> None:
+        if not changes:
+            return
+        self._session.execute(
+            update(models.Transaction),
+            [
+                {
+                    "id": change.transaction_id,
+                    "category_slug": change.new_category_slug,
+                    "category_source": "rule" if change.new_category_slug else None,
+                }
+                for change in changes
+            ],
+        )
+        self._session.add_all(
+            models.CategorizationEvent(
+                transaction_id=change.transaction_id,
+                category_slug=change.new_category_slug,
+                source="rule",
+                applied=True,
+                rule_id=change.rule_id,
+                rules_hash=rules_hash,
+            )
+            for change in changes
         )
         self._session.flush()
 

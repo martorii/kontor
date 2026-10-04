@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict
 
 from kontor.domain.account import Account
 from kontor.domain.imports import ImportResult
+from kontor.domain.recategorization import RerunResult
 
 
 class AccountResponse(BaseModel):
@@ -57,4 +58,41 @@ class ImportResponse(BaseModel):
             rule_matched_count=record.counts.rule_matched,
             llm_matched_count=record.counts.llm_matched,
             uncategorized_count=record.counts.uncategorized,
+        )
+
+
+class ChangeResponse(BaseModel):
+    transaction_id: int
+    old_category: str | None
+    old_source: str | None
+    new_category: str | None
+    rule_id: str | None
+
+
+class RerunResponse(BaseModel):
+    rules_hash: str
+    dry_run: bool
+    evaluated: int
+    changed: int
+    unchanged: int
+    changes: list[ChangeResponse]
+
+    @classmethod
+    def from_domain(cls, result: RerunResult) -> "RerunResponse":
+        return cls(
+            rules_hash=result.rules_hash,
+            dry_run=result.dry_run,
+            evaluated=result.evaluated,
+            changed=len(result.changes),
+            unchanged=result.evaluated - len(result.changes),
+            changes=[
+                ChangeResponse(
+                    transaction_id=c.transaction_id,
+                    old_category=c.old_category_slug,
+                    old_source=c.old_category_source,
+                    new_category=c.new_category_slug,
+                    rule_id=c.rule_id,
+                )
+                for c in result.changes
+            ],
         )

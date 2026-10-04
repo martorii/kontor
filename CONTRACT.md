@@ -97,6 +97,9 @@ A decision changes only when the developer explicitly decides so. Every change i
   - A matching rule replaces an LLM categorization. Without a match, the LLM result stays.
   - Manual categorizations are untouched.
   - `dry_run=true` returns the changes without writing them.
+  - A rule-categorized transaction that no rule matches anymore (for example after the rule was removed or narrowed) is reset to uncategorized, and the reset is recorded as an event without a category.
+  - A dry run validates the YAML and previews the changes with the new rules, but does not activate them or write anything, including new categories.
+  - The response lists the rules hash, the counts (evaluated, changed, unchanged) and each change.
 - **7.9** The LLM is not re-run automatically on old transactions. A separate endpoint runs the LLM step on currently uncategorized transactions on demand, for example after LM Studio was offline.
 
 ## 8. Import
@@ -207,3 +210,4 @@ These are decided during implementation and then moved into the sections above:
 - **2026-10-04** — Failed imports leave no `imports` record (§8.3), so the unique file hash never blocks a retry.
 - **2026-10-04** — Category tree and rules YAML format decided (§5.1, §5.6, §5.7, §6.8a); removed open item 15.1.
 - **2026-10-04** — Rule matching semantics decided (§6.5a, §6.6a): signed, inclusive amount range; normalized matching.
+- **2026-10-04** — Re-categorization decided (§7.8): rule results with no matching rule are reset to uncategorized; dry run activates nothing.

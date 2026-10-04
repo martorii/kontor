@@ -143,7 +143,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
   - unmatched transactions left uncategorized
 
 ### Step 12 — Re-categorization endpoint
-- [ ] **Scope**
+- [x] **Scope**
   - `POST /categorization/rerun` with `dry_run`, following CONTRACT §7.8
 - **Pass gate** — tests cover:
   - manual categorizations untouched
