@@ -33,7 +33,8 @@ A decision changes only when the developer explicitly decides so. Every change i
 
 ## 3. Banks and parsing
 
-- **3.1** v1 supports **DKB**. The DKB format details are defined during implementation.
+- **3.1** v1 supports **DKB checking accounts (Girokonto)**. The DKB credit card export is out of scope.
+- **3.1a** DKB format: UTF-8, `;` delimiter, a preamble (`"Girokonto";"<IBAN>"`, period, balance) followed by a header row starting with `Buchungsdatum`. Dates are `dd.mm.yy`; amounts use `.` as thousands and `,` as decimal separator. The account IBAN comes from the preamble. The counterparty is the payee for outflows and the payer for inflows. Only rows with status `Gebucht` are imported; pending rows are skipped.
 - **3.2** Each bank format is one parser in a **parser registry**. A parser detects whether it recognizes a file from its header, and maps rows to one canonical transaction schema. Adding a bank means adding one parser plus its fixture tests.
 - **3.3** The original CSV row is stored as JSONB next to the canonical fields, so transactions can be re-parsed without re-uploading.
 
@@ -189,7 +190,6 @@ A decision changes only when the developer explicitly decides so. Every change i
 These are decided during implementation and then moved into the sections above:
 
 - **15.1** The concrete category tree.
-- **15.2** The DKB CSV format details: checking account, and the credit card if used.
 - **15.3** How an account is identified for future formats that contain no IBAN.
 - **15.4** The default LLM confidence threshold.
 - **15.5** Whether the repo is public or private.
@@ -199,3 +199,4 @@ These are decided during implementation and then moved into the sections above:
 ## Changelog
 
 - **2026-10-03** — Initial contract from scoping.
+- **2026-10-04** — DKB format decided (§3.1, §3.1a): checking account only, credit card out of scope; removed open item 15.2.
