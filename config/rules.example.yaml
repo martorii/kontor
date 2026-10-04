@@ -1,0 +1,112 @@
+# Example rules for Kontor. Copy to config/rules.yaml (gitignored) and adapt.
+# Kontor reads this file and never writes to it.
+#
+# categories: a two-level tree. A top-level category has a `kind` (expense, income, transfer or
+#   savings); a subcategory has a `parent` and a slug of the form `<parent>.<name>`.
+# rules: ordered, the first matching rule wins. Rules assign a subcategory.
+#   field: counterparty | purpose | iban
+#   type:  contains (default, case-insensitive) | regex
+#   when:  optional conditions: amount_sign (negative|positive), amount_min, amount_max,
+#          account (an account IBAN)
+# Matching runs on normalized text: uppercased, with store numbers, dates and boilerplate removed.
+
+categories:
+  - {slug: housing, name: "Housing", kind: expense}
+  - {slug: housing.rent, name: "Rent", parent: housing}
+  - {slug: housing.utilities, name: "Utilities", parent: housing}
+  - {slug: housing.internet-phone, name: "Internet & phone", parent: housing}
+  - {slug: housing.household, name: "Household", parent: housing}
+
+  - {slug: food, name: "Food", kind: expense}
+  - {slug: food.groceries, name: "Groceries", parent: food}
+  - {slug: food.restaurants, name: "Restaurants", parent: food}
+  - {slug: food.coffee, name: "Coffee & bakery", parent: food}
+
+  - {slug: transport, name: "Transport", kind: expense}
+  - {slug: transport.public, name: "Public transport", parent: transport}
+  - {slug: transport.fuel, name: "Fuel", parent: transport}
+  - {slug: transport.car, name: "Car", parent: transport}
+  - {slug: transport.taxi, name: "Taxi & ride-hailing", parent: transport}
+
+  - {slug: health, name: "Health", kind: expense}
+  - {slug: health.pharmacy, name: "Pharmacy", parent: health}
+  - {slug: health.doctor, name: "Doctor", parent: health}
+
+  - {slug: kids, name: "Kids", kind: expense}
+  - {slug: kids.daycare, name: "Daycare", parent: kids}
+  - {slug: kids.health, name: "Kids' health", parent: kids}
+  - {slug: kids.clothing, name: "Kids' clothing", parent: kids}
+  - {slug: kids.toys, name: "Toys", parent: kids}
+  - {slug: kids.activities, name: "Activities", parent: kids}
+
+  - {slug: shopping, name: "Shopping", kind: expense}
+  - {slug: shopping.clothing, name: "Clothing", parent: shopping}
+  - {slug: shopping.electronics, name: "Electronics", parent: shopping}
+  - {slug: shopping.home, name: "Home", parent: shopping}
+
+  - {slug: leisure, name: "Leisure", kind: expense}
+  - {slug: leisure.subscriptions, name: "Subscriptions", parent: leisure}
+  - {slug: leisure.culture, name: "Culture", parent: leisure}
+  - {slug: leisure.sports, name: "Sports", parent: leisure}
+  - {slug: leisure.travel, name: "Travel", parent: leisure}
+
+  - {slug: insurance, name: "Insurance", kind: expense}
+  - {slug: insurance.health, name: "Health insurance", parent: insurance}
+  - {slug: insurance.liability, name: "Liability insurance", parent: insurance}
+  - {slug: insurance.car, name: "Car insurance", parent: insurance}
+  - {slug: insurance.other, name: "Other insurance", parent: insurance}
+
+  - {slug: personal-care, name: "Personal care", kind: expense}
+  - {slug: personal-care.hairdresser, name: "Hairdresser", parent: personal-care}
+  - {slug: personal-care.cosmetics, name: "Cosmetics", parent: personal-care}
+
+  - {slug: education, name: "Education", kind: expense}
+  - {slug: education.courses, name: "Courses", parent: education}
+  - {slug: education.books, name: "Books", parent: education}
+
+  - {slug: gifts-donations, name: "Gifts & donations", kind: expense}
+  - {slug: gifts-donations.gifts, name: "Gifts", parent: gifts-donations}
+  - {slug: gifts-donations.donations, name: "Donations", parent: gifts-donations}
+
+  - {slug: pets, name: "Pets", kind: expense}
+  - {slug: pets.food, name: "Pet food", parent: pets}
+  - {slug: pets.vet, name: "Vet", parent: pets}
+
+  - {slug: cash, name: "Cash", kind: expense}
+  - {slug: cash.withdrawals, name: "Cash withdrawals", parent: cash}
+
+  - {slug: fees-taxes, name: "Fees & taxes", kind: expense}
+  - {slug: fees-taxes.bank-fees, name: "Bank fees", parent: fees-taxes}
+  - {slug: fees-taxes.taxes, name: "Taxes", parent: fees-taxes}
+
+  - {slug: other, name: "Other", kind: expense}
+  - {slug: other.misc, name: "Miscellaneous", parent: other}
+
+  - {slug: income, name: "Income", kind: income}
+  - {slug: income.salary, name: "Salary", parent: income}
+  - {slug: income.child-benefit, name: "Child benefit", parent: income}
+  - {slug: income.refunds, name: "Refunds", parent: income}
+  - {slug: income.other, name: "Other income", parent: income}
+
+  - {slug: transfer, name: "Transfers", kind: transfer}
+  - {slug: transfer.internal, name: "Between own accounts", parent: transfer}
+
+  - {slug: savings, name: "Savings", kind: savings}
+  - {slug: savings.deposits, name: "Deposits", parent: savings}
+
+rules:
+  - {id: income-salary, category: income.salary, field: purpose, match: "GEHALT", when: {amount_sign: positive}}
+  - {id: income-child-benefit, category: income.child-benefit, field: counterparty, match: "FAMILIENKASSE"}
+  - {id: rent, category: housing.rent, field: purpose, match: "MIETE", when: {amount_sign: negative}}
+  - {id: utilities-stadtwerke, category: housing.utilities, field: counterparty, match: "STADTWERKE"}
+  - {id: groceries-rewe, category: food.groceries, field: counterparty, match: "REWE"}
+  - {id: groceries-edeka, category: food.groceries, field: counterparty, match: "EDEKA"}
+  - {id: groceries-lidl, category: food.groceries, field: counterparty, match: "LIDL"}
+  - {id: groceries-aldi, category: food.groceries, field: counterparty, match: "ALDI"}
+  - {id: drugstore-dm, category: housing.household, field: counterparty, match: "DM DROGERIE"}
+  - {id: pharmacy, category: health.pharmacy, field: counterparty, match: "APOTHEKE"}
+  - {id: public-transport-db, category: transport.public, field: counterparty, match: "DB VERTRIEB"}
+  - {id: fuel, category: transport.fuel, field: counterparty, match: "^(ARAL|SHELL|ESSO|TOTAL)\\b", type: regex}
+  - {id: streaming-netflix, category: leisure.subscriptions, field: counterparty, match: "NETFLIX"}
+  - {id: streaming-spotify, category: leisure.subscriptions, field: counterparty, match: "SPOTIFY"}
+  - {id: atm, category: cash.withdrawals, field: purpose, match: "GELDAUTOMAT"}

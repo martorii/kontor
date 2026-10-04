@@ -20,3 +20,7 @@ class AccountNotFoundError(KontorError):
 
 class DuplicateIbanError(KontorError):
     """Another account already uses this IBAN."""
+
+
+class RulesFileError(KontorError):
+    """The rules file is missing, unreadable or invalid."""

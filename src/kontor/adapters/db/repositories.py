@@ -1,6 +1,7 @@
 from collections.abc import Mapping, Sequence
 
 from sqlalchemy import select, update
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -8,6 +9,7 @@ from kontor.adapters.db import models
 from kontor.domain.account import Account, NewAccount
 from kontor.domain.errors import AccountNotFoundError, DuplicateIbanError
 from kontor.domain.imports import ImportCounts, ImportRecord
+from kontor.domain.rules import CategoryDef
 from kontor.domain.transaction import PreparedTransaction
 
 
@@ -140,3 +142,33 @@ class SqlTransactionRepository:
             for row in rows
         )
         self._session.flush()
+
+
+class SqlCategoryRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def upsert_all(self, categories: Sequence[CategoryDef]) -> None:
+        # Parents first, so the foreign key of every subcategory is satisfied.
+        for level in (
+            [c for c in categories if c.parent_slug is None],
+            [c for c in categories if c.parent_slug is not None],
+        ):
+            if not level:
+                continue
+            stmt = insert(models.Category).values(
+                [
+                    {"slug": c.slug, "parent_slug": c.parent_slug, "name": c.name, "kind": c.kind}
+                    for c in level
+                ]
+            )
+            self._session.execute(
+                stmt.on_conflict_do_update(
+                    index_elements=["slug"],
+                    set_={
+                        "parent_slug": stmt.excluded.parent_slug,
+                        "name": stmt.excluded.name,
+                        "kind": stmt.excluded.kind,
+                    },
+                )
+            )
