@@ -106,7 +106,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
   - malformed-file and unknown-format errors
 
 ### Step 09 — Import service and accounts
-- [ ] **Scope**
+- [x] **Scope**
   - `POST /imports`: file hash check, account matching and auto-creation by IBAN, deduplication, persistence in one DB transaction, an `imports` record with counts
   - `GET` and `PATCH` endpoints for accounts
 - **Pass gate** — integration tests cover:

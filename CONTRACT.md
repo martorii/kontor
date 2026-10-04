@@ -98,7 +98,7 @@ A decision changes only when the developer explicitly decides so. Every change i
 
 - **8.1** The user uploads a CSV through the UI. The UI sends it to the API.
 - **8.2** The upload request is **synchronous**: the request returns once parsing, rules, and the LLM step are done.
-- **8.3** Parse, deduplicate, rule-categorize, and persist happen in **one database transaction**, which is committed before the LLM step starts. A failure in this phase rolls back the whole file.
+- **8.3** Parse, deduplicate, rule-categorize, and persist happen in **one database transaction**, which is committed before the LLM step starts. A failure in this phase rolls back the whole file, including an auto-created account. No import record is kept for a failed file, so a corrected file can be uploaded again.
 - **8.4** LLM results are written in small committed batches. An interruption leaves the remaining transactions uncategorized and loses no imported data.
 - **8.5** Before the LLM step, Kontor checks that LM Studio is reachable. If it is not, the step is skipped with one warning log line, and the import still succeeds.
 - **8.6** Each LLM call has a timeout. The number of concurrent LLM calls is configurable and defaults to 1.
@@ -200,3 +200,4 @@ These are decided during implementation and then moved into the sections above:
 
 - **2026-10-03** — Initial contract from scoping.
 - **2026-10-04** — DKB format decided (§3.1, §3.1a): checking account only, credit card out of scope; removed open item 15.2.
+- **2026-10-04** — Failed imports leave no `imports` record (§8.3), so the unique file hash never blocks a retry.

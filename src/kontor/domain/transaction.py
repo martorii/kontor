@@ -23,3 +23,12 @@ class Transaction:
     def __post_init__(self) -> None:
         if not isinstance(self.amount, Decimal):
             raise TypeError("amount must be a Decimal, never a float")
+
+
+@dataclass(frozen=True, slots=True)
+class PreparedTransaction:
+    """A parsed transaction with the values derived at import time."""
+
+    transaction: Transaction
+    counterparty_normalized: str
+    fingerprint: str

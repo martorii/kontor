@@ -6,11 +6,13 @@ from pathlib import Path
 import pytest
 from alembic import command
 from alembic.config import Config
+from fastapi.testclient import TestClient
 from sqlalchemy import Engine, create_engine, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
+from kontor.api.app import create_app
 from kontor.config import Settings
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -64,3 +66,16 @@ def session(engine: Engine) -> Iterator[Session]:
         with Session(connection, join_transaction_mode="create_savepoint") as session:
             yield session
         transaction.rollback()
+
+
+@pytest.fixture
+def client(postgres_url: str, engine: Engine) -> Iterator[TestClient]:
+    """An API client on the test database. Committed data is wiped after each test."""
+    yield TestClient(create_app(Settings(database_url=postgres_url)))
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "TRUNCATE categorization_events, transactions, imports, accounts "
+                "RESTART IDENTITY CASCADE"
+            )
+        )
