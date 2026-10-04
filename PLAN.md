@@ -131,7 +131,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
   - a missing parent or a duplicate slug rejected
 
 ### Step 11 — Rule engine in the import
-- [ ] **Scope**
+- [x] **Scope**
   - the rule engine: field, match type, and conditions; first match wins
   - integrated into the import
   - writes `categorization_events` with provenance

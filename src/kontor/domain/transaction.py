@@ -26,9 +26,19 @@ class Transaction:
 
 
 @dataclass(frozen=True, slots=True)
+class RuleCategorization:
+    """The outcome of a matching rule, with the provenance to record (CONTRACT §7.6)."""
+
+    category_slug: str
+    rule_id: str
+    rules_hash: str
+
+
+@dataclass(frozen=True, slots=True)
 class PreparedTransaction:
     """A parsed transaction with the values derived at import time."""
 
     transaction: Transaction
     counterparty_normalized: str
     fingerprint: str
+    categorization: RuleCategorization | None = None
