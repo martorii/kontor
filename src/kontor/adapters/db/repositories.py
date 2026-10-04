@@ -1,0 +1,142 @@
+from collections.abc import Mapping, Sequence
+
+from sqlalchemy import select, update
+from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
+
+from kontor.adapters.db import models
+from kontor.domain.account import Account, NewAccount
+from kontor.domain.errors import AccountNotFoundError, DuplicateIbanError
+from kontor.domain.imports import ImportCounts, ImportRecord
+from kontor.domain.transaction import PreparedTransaction
+
+
+def _account(row: models.Account) -> Account:
+    return Account(
+        id=row.id,
+        name=row.name,
+        bank=row.bank,
+        iban=row.iban,
+        currency=row.currency,
+        account_type=row.account_type,
+        parser_format=row.parser_format,
+    )
+
+
+class SqlAccountRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def get(self, account_id: int) -> Account | None:
+        row = self._session.get(models.Account, account_id)
+        return _account(row) if row else None
+
+    def get_by_iban(self, iban: str) -> Account | None:
+        row = self._session.scalar(select(models.Account).where(models.Account.iban == iban))
+        return _account(row) if row else None
+
+    def list(self) -> list[Account]:
+        rows = self._session.scalars(select(models.Account).order_by(models.Account.id))
+        return [_account(row) for row in rows]
+
+    def add(self, new: NewAccount) -> Account:
+        row = models.Account(
+            name=new.name,
+            bank=new.bank,
+            iban=new.iban,
+            currency=new.currency,
+            account_type=new.account_type,
+            parser_format=new.parser_format,
+        )
+        self._session.add(row)
+        self._session.flush()
+        return _account(row)
+
+    def update(self, account_id: int, changes: Mapping[str, str]) -> Account:
+        row = self._session.get(models.Account, account_id)
+        if row is None:
+            raise AccountNotFoundError(f"account {account_id} not found")
+        for field, value in changes.items():
+            setattr(row, field, value)
+        try:
+            self._session.flush()
+        except IntegrityError as exc:
+            raise DuplicateIbanError("another account already uses this IBAN") from exc
+        return _account(row)
+
+
+class SqlImportRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def hash_exists(self, file_hash: str) -> bool:
+        stmt = select(models.Import.id).where(models.Import.file_hash == file_hash)
+        return self._session.scalar(stmt) is not None
+
+    def add(self, account_id: int, file_name: str, file_hash: str) -> int:
+        row = models.Import(
+            account_id=account_id, file_name=file_name, file_hash=file_hash, status="running"
+        )
+        self._session.add(row)
+        self._session.flush()
+        return row.id
+
+    def complete(self, import_id: int, counts: ImportCounts) -> ImportRecord:
+        self._session.execute(
+            update(models.Import)
+            .where(models.Import.id == import_id)
+            .values(
+                status="completed",
+                new_count=counts.new,
+                duplicate_count=counts.duplicates,
+                rule_matched_count=counts.rule_matched,
+                llm_matched_count=counts.llm_matched,
+                uncategorized_count=counts.uncategorized,
+            )
+        )
+        row = self._session.get_one(models.Import, import_id)
+        self._session.refresh(row)
+        return ImportRecord(
+            id=row.id,
+            account_id=row.account_id,
+            file_name=row.file_name,
+            file_hash=row.file_hash,
+            status=row.status,
+            counts=counts,
+        )
+
+
+class SqlTransactionRepository:
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def existing_fingerprints(self, account_id: int, fingerprints: Sequence[str]) -> set[str]:
+        if not fingerprints:
+            return set()
+        stmt = select(models.Transaction.fingerprint).where(
+            models.Transaction.account_id == account_id,
+            models.Transaction.fingerprint.in_(fingerprints),
+        )
+        return set(self._session.scalars(stmt))
+
+    def add_many(
+        self, account_id: int, import_id: int, rows: Sequence[PreparedTransaction]
+    ) -> None:
+        self._session.add_all(
+            models.Transaction(
+                account_id=account_id,
+                import_id=import_id,
+                booking_date=row.transaction.booking_date,
+                value_date=row.transaction.value_date,
+                amount=row.transaction.amount,
+                currency=row.transaction.currency,
+                counterparty_raw=row.transaction.counterparty,
+                counterparty_normalized=row.counterparty_normalized,
+                counterparty_iban=row.transaction.counterparty_iban,
+                purpose=row.transaction.purpose,
+                fingerprint=row.fingerprint,
+                raw_row=dict(row.transaction.raw),
+            )
+            for row in rows
+        )
+        self._session.flush()
