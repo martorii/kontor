@@ -1,6 +1,7 @@
 import os
 import uuid
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
+from contextlib import ExitStack
 from pathlib import Path
 
 import pytest
@@ -69,13 +70,35 @@ def session(engine: Engine) -> Iterator[Session]:
 
 
 @pytest.fixture
-def client(postgres_url: str, engine: Engine) -> Iterator[TestClient]:
-    """An API client on the test database. Committed data is wiped after each test."""
-    yield TestClient(create_app(Settings(database_url=postgres_url)))
+def make_client(
+    postgres_url: str, engine: Engine, tmp_path: Path
+) -> Iterator[Callable[[str | None], TestClient]]:
+    """Build API clients on the test database. Committed data is wiped after each test.
+
+    Pass rules YAML text to use custom rules, or None for config/rules.example.yaml. The app
+    startup (rules load and category sync) runs for every client.
+    """
+    stack = ExitStack()
+
+    def factory(rules_yaml: str | None = None) -> TestClient:
+        rules_path = ROOT / "config" / "rules.example.yaml"
+        if rules_yaml is not None:
+            rules_path = tmp_path / "rules.yaml"
+            rules_path.write_text(rules_yaml)
+        settings = Settings(database_url=postgres_url, rules_path=str(rules_path))
+        return stack.enter_context(TestClient(create_app(settings)))
+
+    yield factory
+    stack.close()
     with engine.begin() as conn:
         conn.execute(
             text(
-                "TRUNCATE categorization_events, transactions, imports, accounts "
+                "TRUNCATE categorization_events, transactions, imports, accounts, categories "
                 "RESTART IDENTITY CASCADE"
             )
         )
+
+
+@pytest.fixture
+def client(make_client: Callable[[str | None], TestClient]) -> TestClient:
+    return make_client(None)

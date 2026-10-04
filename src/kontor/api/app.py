@@ -60,7 +60,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     app = FastAPI(title="Kontor", lifespan=lifespan)
     app.state.rules = rules
-    app.state.import_service = ImportService(uow_factory, default_registry().detect)
+    app.state.import_service = ImportService(
+        uow_factory, default_registry().detect, lambda: rules.current
+    )
     app.state.account_service = AccountService(uow_factory)
 
     for error in _STATUS_BY_ERROR:

@@ -124,22 +124,41 @@ class SqlTransactionRepository:
     def add_many(
         self, account_id: int, import_id: int, rows: Sequence[PreparedTransaction]
     ) -> None:
-        self._session.add_all(
-            models.Transaction(
-                account_id=account_id,
-                import_id=import_id,
-                booking_date=row.transaction.booking_date,
-                value_date=row.transaction.value_date,
-                amount=row.transaction.amount,
-                currency=row.transaction.currency,
-                counterparty_raw=row.transaction.counterparty,
-                counterparty_normalized=row.counterparty_normalized,
-                counterparty_iban=row.transaction.counterparty_iban,
-                purpose=row.transaction.purpose,
-                fingerprint=row.fingerprint,
-                raw_row=dict(row.transaction.raw),
+        models_and_rows = [
+            (
+                models.Transaction(
+                    account_id=account_id,
+                    import_id=import_id,
+                    booking_date=row.transaction.booking_date,
+                    value_date=row.transaction.value_date,
+                    amount=row.transaction.amount,
+                    currency=row.transaction.currency,
+                    counterparty_raw=row.transaction.counterparty,
+                    counterparty_normalized=row.counterparty_normalized,
+                    counterparty_iban=row.transaction.counterparty_iban,
+                    purpose=row.transaction.purpose,
+                    fingerprint=row.fingerprint,
+                    raw_row=dict(row.transaction.raw),
+                    category_slug=row.categorization.category_slug if row.categorization else None,
+                    category_source="rule" if row.categorization else None,
+                ),
+                row,
             )
             for row in rows
+        ]
+        self._session.add_all(model for model, _ in models_and_rows)
+        self._session.flush()  # assigns the transaction ids the events refer to
+        self._session.add_all(
+            models.CategorizationEvent(
+                transaction_id=model.id,
+                category_slug=row.categorization.category_slug,
+                source="rule",
+                applied=True,
+                rule_id=row.categorization.rule_id,
+                rules_hash=row.categorization.rules_hash,
+            )
+            for model, row in models_and_rows
+            if row.categorization
         )
         self._session.flush()
 

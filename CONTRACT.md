@@ -66,7 +66,9 @@ A decision changes only when the developer explicitly decides so. Every change i
   - `contains` — case-insensitive; the default
   - `regex`
 - **6.5** A rule can add optional conditions: amount sign, amount range, account.
+- **6.5a** The amount range compares the **signed** amount with inclusive bounds (an outflow of €30 is `-30`, so its range is `amount_min: -50, amount_max: -10`). All conditions of a rule must hold. The account condition is the account's IBAN.
 - **6.6** Matching runs on **normalized** text: uppercased, with store numbers, dates, and boilerplate stripped.
+- **6.6a** `contains` normalizes the rule's pattern the same way; `regex` is applied to the normalized text as written, case-insensitively. IBAN rules compare the counterparty IBAN uppercased without spaces and never match a transaction that has no IBAN. Words that normalization strips (such as `KARTENZAHLUNG`) cannot be matched.
 - **6.7** Fuzzy matching is **never** used to assign a category automatically.
 - **6.8** The YAML is validated with Pydantic on every load. If the file is invalid, the reload is rejected and the previously loaded rules stay active.
 - **6.8a** At startup there is no previous rules set, so an invalid or missing rules file stops the API with a readable error. The account condition of a rule is the account's IBAN.
@@ -204,3 +206,4 @@ These are decided during implementation and then moved into the sections above:
 - **2026-10-04** — DKB format decided (§3.1, §3.1a): checking account only, credit card out of scope; removed open item 15.2.
 - **2026-10-04** — Failed imports leave no `imports` record (§8.3), so the unique file hash never blocks a retry.
 - **2026-10-04** — Category tree and rules YAML format decided (§5.1, §5.6, §5.7, §6.8a); removed open item 15.1.
+- **2026-10-04** — Rule matching semantics decided (§6.5a, §6.6a): signed, inclusive amount range; normalized matching.
