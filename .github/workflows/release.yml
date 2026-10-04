@@ -17,6 +17,7 @@ jobs:
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
@@ -35,7 +36,9 @@ jobs:
       packages: write
     env:
       IMAGE: ghcr.io/${{ github.repository_owner }}/kontor-api
-      TAG: ${{ needs.release-please.outputs.tag_name }}
+      # Image tag is v<version> (not the git tag, which release-please prefixes with the
+      # package name) so it matches KONTOR_TAG in docker-compose.yml and `make rollback TAG=vX.Y.Z`.
+      TAG: v${{ needs.release-please.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
