@@ -8,7 +8,7 @@ from kontor.application.llm_step import LLMCategorizationStep
 from kontor.domain.account import NewAccount
 from kontor.domain.errors import DuplicateFileError
 from kontor.domain.fingerprint import fingerprint_all
-from kontor.domain.imports import ImportCounts, ImportResult
+from kontor.domain.imports import ImportCounts, ImportRecord, ImportResult
 from kontor.domain.normalization import normalize_counterparty
 from kontor.domain.rule_engine import match_rule
 from kontor.domain.rules import RulesConfig
@@ -33,6 +33,10 @@ class ImportService:
         self._detect_parser = detect_parser
         self._get_rules = get_rules
         self._llm_step = llm_step
+
+    def list_imports(self) -> list[ImportRecord]:
+        with self._uow_factory() as uow:
+            return uow.imports.list()
 
     def import_file(self, file_name: str, content: bytes) -> ImportResult:
         """Parse, deduplicate and persist one file in a single database transaction.

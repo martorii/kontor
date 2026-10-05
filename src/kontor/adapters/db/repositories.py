@@ -69,6 +69,24 @@ def _candidate(row: models.Transaction, iban: str) -> Candidate:
     )
 
 
+def _import_record(row: models.Import) -> ImportRecord:
+    return ImportRecord(
+        id=row.id,
+        account_id=row.account_id,
+        file_name=row.file_name,
+        file_hash=row.file_hash,
+        status=row.status,
+        created_at=row.created_at,
+        counts=ImportCounts(
+            new=row.new_count,
+            duplicates=row.duplicate_count,
+            rule_matched=row.rule_matched_count,
+            llm_matched=row.llm_matched_count,
+            uncategorized=row.uncategorized_count,
+        ),
+    )
+
+
 class SqlAccountRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
@@ -142,14 +160,13 @@ class SqlImportRepository:
         )
         row = self._session.get_one(models.Import, import_id)
         self._session.refresh(row)
-        return ImportRecord(
-            id=row.id,
-            account_id=row.account_id,
-            file_name=row.file_name,
-            file_hash=row.file_hash,
-            status=row.status,
-            counts=counts,
+        return _import_record(row)
+
+    def list(self) -> list[ImportRecord]:
+        rows = self._session.scalars(
+            select(models.Import).order_by(models.Import.created_at.desc(), models.Import.id.desc())
         )
+        return [_import_record(row) for row in rows]
 
     def release_for_manual(self, import_id: int, previous_source: str | None) -> None:
         column = {

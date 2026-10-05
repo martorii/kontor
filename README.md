@@ -25,4 +25,4 @@ curl localhost:8000/health                                     # API only (does 
 docker compose exec postgres pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"   # Postgres only
 ```
 
-Change `API_PORT` in `.env` if port 8000 is taken. Postgres data lives in the named volume `kontor_pgdata`; `docker compose down -v` deletes it.
+The UI is at http://localhost:8501 (`UI_PORT` in `.env`). Change `API_PORT` in `.env` if port 8000 is taken. Postgres data lives in the named volume `kontor_pgdata`; `docker compose down -v` deletes it.

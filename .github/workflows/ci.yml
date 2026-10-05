@@ -54,3 +54,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: docker build -t kontor-api:ci .
+      - run: docker build -f ui/Dockerfile -t kontor-ui:ci .

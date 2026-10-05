@@ -31,6 +31,10 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       RULES_PATH: /app/config/rules.yaml
+      # LM Studio runs on the host. `localhost` inside the container would be the container.
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:1234/v1}
+    extra_hosts:
+      - "host.docker.internal:host-gateway" # Linux; Docker Desktop already provides the name
     volumes:
       # The real rules.yaml is gitignored. Copy config/rules.example.yaml to config/rules.yaml.
       - ./config:/app/config:ro
@@ -48,6 +52,19 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  ui:
+    build:
+      context: .
+      dockerfile: ui/Dockerfile
+    image: ghcr.io/martorii/kontor-ui:${KONTOR_TAG:-v0.1.2} # x-release-please-version
+    environment:
+      API_URL: http://api:8000
+    ports:
+      - "${UI_PORT:-8501}:8501"
+    depends_on:
+      api:
+        condition: service_healthy
 
 volumes:
   kontor_pgdata:
