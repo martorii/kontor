@@ -1,4 +1,4 @@
-.PHONY: lint format format-check typecheck test migrate-check deploy rollback
+.PHONY: lint format format-check typecheck test test-llm migrate-check deploy rollback
 
 lint:
 	uv run ruff check .
@@ -14,6 +14,10 @@ typecheck:
 
 test:
 	uv run pytest
+
+# Needs LM Studio running locally (LLM_BASE_URL, LLM_MODEL in .env).
+test-llm:
+	uv run pytest -m llm
 
 # Fails if the models and the migrations disagree. Needs a migrated, reachable DATABASE_URL.
 migrate-check:

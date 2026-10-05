@@ -79,7 +79,7 @@ A decision changes only when the developer explicitly decides so. Every change i
 - **7.1** Order: **rules → LLM → uncategorized**.
 - **7.2** The LLM sees only transactions that no rule matched.
 - **7.3** The LLM's output is constrained to the category list through a JSON schema, and comes with a confidence score.
-- **7.4** Below a configurable confidence threshold, the LLM's answer is stored as a **suggestion**, and the transaction stays uncategorized.
+- **7.4** Below a configurable confidence threshold, the LLM's answer is stored as a **suggestion**, and the transaction stays uncategorized. The default threshold is **0.80**. Confidence is the model's probability of the chosen category, computed from token logprobs (never a self-reported score); the category is constrained to the allowed list with JSON-schema structured output.
 - **7.5** Uncategorized transactions are stored in the database and resolved later in the review tab.
 - **7.6** Every categorization records its provenance:
   - source (`rule`, `llm`, or `manual`)
@@ -198,7 +198,6 @@ A decision changes only when the developer explicitly decides so. Every change i
 These are decided during implementation and then moved into the sections above:
 
 - **15.3** How an account is identified for future formats that contain no IBAN.
-- **15.4** The default LLM confidence threshold.
 - **15.5** Whether the repo is public or private.
 
 ---
@@ -211,3 +210,4 @@ These are decided during implementation and then moved into the sections above:
 - **2026-10-04** — Category tree and rules YAML format decided (§5.1, §5.6, §5.7, §6.8a); removed open item 15.1.
 - **2026-10-04** — Rule matching semantics decided (§6.5a, §6.6a): signed, inclusive amount range; normalized matching.
 - **2026-10-04** — Re-categorization decided (§7.8): rule results with no matching rule are reset to uncategorized; dry run activates nothing.
+- **2026-10-05** — LLM confidence decided (§7.4): logprob-based probability, default threshold 0.80; removed open item 15.4.
