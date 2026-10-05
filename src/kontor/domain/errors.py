@@ -24,3 +24,15 @@ class DuplicateIbanError(KontorError):
 
 class RulesFileError(KontorError):
     """The rules file is missing, unreadable or invalid."""
+
+
+class LLMUnavailableError(KontorError):
+    """The LLM server cannot be reached."""
+
+
+class LLMTimeoutError(KontorError):
+    """The LLM did not answer within the timeout."""
+
+
+class LLMInvalidOutputError(KontorError):
+    """The LLM answer is unusable: bad JSON, a category outside the list, or no logprobs."""
