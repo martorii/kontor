@@ -4,6 +4,7 @@ from typing import Protocol, Self
 
 from kontor.domain.account import Account, NewAccount
 from kontor.domain.imports import ImportCounts, ImportRecord
+from kontor.domain.recategorization import Candidate, Change
 from kontor.domain.rules import CategoryDef
 from kontor.domain.transaction import PreparedTransaction
 
@@ -38,6 +39,14 @@ class TransactionRepository(Protocol):
     def add_many(
         self, account_id: int, import_id: int, rows: Sequence[PreparedTransaction]
     ) -> None: ...
+
+    def list_for_recategorization(self) -> list[Candidate]:
+        """Every transaction that is not manually categorized."""
+        ...
+
+    def apply_rule_changes(self, changes: Sequence[Change], rules_hash: str) -> None:
+        """Set the new category (source `rule`) and record one event per change."""
+        ...
 
 
 class CategoryRepository(Protocol):

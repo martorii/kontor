@@ -10,8 +10,9 @@ from sqlalchemy.orm import sessionmaker
 from kontor.adapters.db.uow import SqlUnitOfWork
 from kontor.adapters.parsers.registry import default_registry
 from kontor.adapters.rules.yaml_source import YamlRulesSource
-from kontor.api.routers import accounts, health, imports
+from kontor.api.routers import accounts, categorization, health, imports
 from kontor.application.accounts import AccountService
+from kontor.application.categorization import CategorizationService
 from kontor.application.category_sync import sync_categories
 from kontor.application.import_service import ImportService
 from kontor.application.rules_holder import RulesHolder
@@ -21,6 +22,7 @@ from kontor.domain.errors import (
     DuplicateFileError,
     DuplicateIbanError,
     MalformedFileError,
+    RulesFileError,
     UnknownFormatError,
 )
 from kontor.logging import configure_logging
@@ -31,6 +33,7 @@ _STATUS_BY_ERROR: dict[type[Exception], int] = {
     AccountNotFoundError: status.HTTP_404_NOT_FOUND,
     UnknownFormatError: status.HTTP_422_UNPROCESSABLE_CONTENT,
     MalformedFileError: status.HTTP_422_UNPROCESSABLE_CONTENT,
+    RulesFileError: status.HTTP_422_UNPROCESSABLE_CONTENT,
 }
 
 
@@ -64,10 +67,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         uow_factory, default_registry().detect, lambda: rules.current
     )
     app.state.account_service = AccountService(uow_factory)
+    app.state.categorization_service = CategorizationService(uow_factory, rules)
 
     for error in _STATUS_BY_ERROR:
         app.add_exception_handler(error, _handle_domain_error)
     app.include_router(health.router)
     app.include_router(imports.router)
     app.include_router(accounts.router)
+    app.include_router(categorization.router)
     return app
