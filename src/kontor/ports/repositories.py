@@ -112,6 +112,10 @@ class CategoryRepository(Protocol):
         """True if the category exists and is a subcategory."""
         ...
 
+    def list_subcategories(self) -> Sequence[CategoryDef]:
+        """Every subcategory, ordered by parent slug, then slug."""
+        ...
+
     def upsert_all(self, categories: Sequence[CategoryDef]) -> None:
         """Insert new categories and update name, parent and kind of existing ones."""
         ...

@@ -464,6 +464,17 @@ class SqlCategoryRepository:
         )
         return self._session.scalar(stmt) is not None
 
+    def list_subcategories(self) -> Sequence[CategoryDef]:
+        stmt = (
+            select(models.Category)
+            .where(models.Category.parent_slug.is_not(None))
+            .order_by(models.Category.parent_slug, models.Category.slug)
+        )
+        return [
+            CategoryDef(slug=c.slug, name=c.name, parent_slug=c.parent_slug, kind=None)
+            for c in self._session.scalars(stmt)
+        ]
+
     def upsert_all(self, categories: Sequence[CategoryDef]) -> None:
         # Parents first, so the foreign key of every subcategory is satisfied.
         for level in (

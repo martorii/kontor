@@ -92,3 +92,14 @@ def test_filters_combine_and_invalid_source_is_rejected(make_client: MakeClient)
 
     assert names(client, category="food", date_from="2026-04-01") == ["REWE Markt"]
     assert client.get("/transactions", params={"source": "bogus"}).status_code == 422
+
+
+def test_categories_lists_only_the_assignable_subcategories(make_client: MakeClient) -> None:
+    client = make_client(RULES)
+
+    categories = client.get("/categories").json()
+
+    slugs = [c["slug"] for c in categories]
+    assert "food" not in slugs
+    assert {"food.groceries", "food.restaurants", "salary.main"} <= set(slugs)
+    assert {"slug": "housing.rent", "name": "Rent", "parent_slug": "housing"} in categories

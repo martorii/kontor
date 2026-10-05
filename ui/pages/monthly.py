@@ -50,6 +50,13 @@ last_day = date(year, month, calendar.monthrange(year, month)[1])
 LIMIT = 500
 
 
+try:
+    assignable = {c["slug"]: f"{c['parent_slug']} › {c['name']}" for c in api.list_categories()}
+except (ApiError, ApiUnreachableError) as exc:
+    st.error(str(exc))
+    st.stop()
+
+
 def show_transactions(category: dict[str, Any], sub_slug: str | None) -> None:
     filters: dict[str, str | int | None] = {
         "account_id": account_id,
@@ -66,20 +73,50 @@ def show_transactions(category: dict[str, Any], sub_slug: str | None) -> None:
     except (ApiError, ApiUnreachableError) as exc:
         st.error(str(exc))
         return
-    st.dataframe(
+    items = page["items"]
+    key = f"tx-{category['slug']}-{sub_slug}"
+    event = st.dataframe(
         [
             {
                 "Date": t["booking_date"],
                 "Reference": t["counterparty"],
                 "Amount": money(t["amount"], t["currency"]),
+                "Category": assignable.get(t["category"], t["category"] or "–"),
+                "Set by": t["category_source"] or "–",
             }
-            for t in page["items"]
+            for t in items
         ],
         hide_index=True,
         use_container_width=True,
+        on_select="rerun",
+        selection_mode="single-row",
+        key=key,
     )
     if page["total"] > LIMIT:
         st.caption(f"Showing the first {LIMIT} of {page['total']} transactions.")
+    selected = event.selection.rows
+    if not selected:
+        st.caption("Select a transaction to change its category.")
+        return
+    transaction = items[selected[0]]
+    st.markdown(f"**{transaction['counterparty']}** — change category")
+    options = list(assignable)
+    current = transaction["category"]
+    target = st.selectbox(
+        "New category",
+        options,
+        index=options.index(current) if current in options else None,
+        format_func=lambda slug: assignable[slug],
+        placeholder="Choose a category",
+        key=f"{key}-target",
+    )
+    if st.button("Save category", key=f"{key}-save", disabled=target is None):
+        try:
+            api.set_category(transaction["transaction_id"], str(target))
+        except (ApiError, ApiUnreachableError) as exc:
+            st.error(str(exc))
+        else:
+            st.rerun()
 
 
 for category in categories:

@@ -99,3 +99,21 @@ def test_report_sends_only_the_given_parameters() -> None:
 
     assert seen["path"] == "/reports/top-merchants"
     assert seen["query"] == {"year": "2026", "account_id": "3", "limit": "5"}
+
+
+def test_set_category_puts_the_slug_for_the_transaction() -> None:
+    seen: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["method"] = request.method
+        seen["path"] = request.url.path
+        seen["json"] = json.loads(request.content)
+        return httpx.Response(200, json={"transaction_id": 4, "source": "manual"})
+
+    client_with(httpx.MockTransport(handler)).set_category(4, "food.groceries")
+
+    assert (seen["method"], seen["path"], seen["json"]) == (
+        "PUT",
+        "/transactions/4/category",
+        {"category": "food.groceries"},
+    )

@@ -67,6 +67,16 @@ class ApiClient:
         result: dict[str, Any] = self._request("GET", "/transactions", params=query)
         return result
 
+    def list_categories(self) -> list[dict[str, Any]]:
+        result: list[dict[str, Any]] = self._request("GET", "/categories")
+        return result
+
+    def set_category(self, transaction_id: int, category: str) -> dict[str, Any]:
+        result: dict[str, Any] = self._request(
+            "PUT", f"/transactions/{transaction_id}/category", json={"category": category}
+        )
+        return result
+
     def report(self, name: str, **params: int | None) -> dict[str, Any]:
         """Fetch /reports/<name>. Parameters left as None are not sent."""
         query = {key: value for key, value in params.items() if value is not None}

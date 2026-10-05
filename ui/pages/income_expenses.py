@@ -39,12 +39,14 @@ months = report["months"]
 st.bar_chart(
     {
         "Month": [MONTHS[m["month"] - 1][:3] for m in months],
+        "Month no.": [m["month"] for m in months],
         "Income": [chart_number(m["income"]) for m in months],
         "Expenses": [chart_number(m["expenses"]) for m in months],
     },
     x="Month",
     y=["Income", "Expenses"],
     stack=False,
+    sort="Month no.",  # calendar order, not alphabetical
 )
 st.dataframe(
     [
