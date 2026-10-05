@@ -61,6 +61,12 @@ class ApiClient:
         result: dict[str, Any] = self._request("PATCH", f"/accounts/{account_id}", json=changes)
         return result
 
+    def transactions(self, **params: str | int | None) -> dict[str, Any]:
+        """Fetch GET /transactions (the explorer). Parameters left as None are not sent."""
+        query = {key: value for key, value in params.items() if value is not None}
+        result: dict[str, Any] = self._request("GET", "/transactions", params=query)
+        return result
+
     def report(self, name: str, **params: int | None) -> dict[str, Any]:
         """Fetch /reports/<name>. Parameters left as None are not sent."""
         query = {key: value for key, value in params.items() if value is not None}

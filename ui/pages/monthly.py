@@ -1,6 +1,10 @@
+import calendar
+from datetime import date
+from typing import Any  # Any: JSON bodies are untyped by nature
+
 import streamlit as st
 
-from api_client import ApiClient
+from api_client import ApiClient, ApiError, ApiUnreachableError
 from report_common import (
     account_select,
     chart_number,
@@ -39,9 +43,49 @@ st.bar_chart(
 )
 
 st.subheader("By category")
+st.caption("Open a category to see its subcategories and pick one to list its transactions.")
+
+first_day = date(year, month, 1)
+last_day = date(year, month, calendar.monthrange(year, month)[1])
+LIMIT = 500
+
+
+def show_transactions(category: dict[str, Any], sub_slug: str | None) -> None:
+    filters: dict[str, str | int | None] = {
+        "account_id": account_id,
+        "date_from": first_day.isoformat(),
+        "date_to": last_day.isoformat(),
+        "limit": LIMIT,
+    }
+    if category["uncategorized"]:
+        filters["source"] = "none"
+    else:
+        filters["category"] = sub_slug or category["slug"]
+    try:
+        page = api.transactions(**filters)
+    except (ApiError, ApiUnreachableError) as exc:
+        st.error(str(exc))
+        return
+    st.dataframe(
+        [
+            {
+                "Date": t["booking_date"],
+                "Reference": t["counterparty"],
+                "Amount": money(t["amount"], t["currency"]),
+            }
+            for t in page["items"]
+        ],
+        hide_index=True,
+        use_container_width=True,
+    )
+    if page["total"] > LIMIT:
+        st.caption(f"Showing the first {LIMIT} of {page['total']} transactions.")
+
+
 for category in categories:
     label = f"{category['name']} — {money(category['total'], currency)}"
     with st.expander(label):
+        subcategories = category["subcategories"]
         st.dataframe(
             [
                 {
@@ -49,8 +93,20 @@ for category in categories:
                     "Total": money(sub["total"], currency),
                     "Transactions": sub["transaction_count"],
                 }
-                for sub in category["subcategories"]
+                for sub in subcategories
             ],
             hide_index=True,
             use_container_width=True,
         )
+        names = {sub["slug"]: sub["name"] for sub in subcategories}
+        options: list[str | None] = [None, *names]
+
+        def option_label(
+            slug: str | None, names: dict[str, str] = names, name: str = category["name"]
+        ) -> str:
+            return f"All of {name}" if slug is None else names[slug]
+
+        choice = st.selectbox(
+            "Transactions of", options, format_func=option_label, key=f"sub-{category['slug']}"
+        )
+        show_transactions(category, choice)
