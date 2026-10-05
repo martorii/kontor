@@ -54,7 +54,7 @@ class LMStudioClient:
                 model=self._model,
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
-                    {"role": "user", "content": _describe(transaction)},
+                    {"role": "user", "content": _describe(transaction, category_slugs)},
                 ],
                 temperature=0,
                 logprobs=True,
@@ -77,12 +77,12 @@ class LMStudioClient:
         return parse_answer(choice.message.content, tokens, category_slugs)
 
 
-def _describe(transaction: Transaction) -> str:
+def _describe(transaction: Transaction, category_slugs: Sequence[str]) -> str:
     return (
         f"Counterparty: {transaction.counterparty}\n"
         f"Purpose: {transaction.purpose}\n"
         f"Amount: {transaction.amount} {transaction.currency}\n"
-        f"Allowed categories are fixed; pick one."
+        "Allowed categories:\n" + "\n".join(f"- {slug}" for slug in category_slugs)
     )
 
 
