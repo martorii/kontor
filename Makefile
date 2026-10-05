@@ -1,4 +1,4 @@
-.PHONY: lint format format-check typecheck test test-llm migrate-check deploy rollback
+.PHONY: lint format format-check typecheck test test-llm migrate-check deploy rollback reset-db
 
 lint:
 	uv run ruff check .
@@ -37,3 +37,10 @@ rollback:
 	@echo 'KONTOR_TAG=$(TAG)' >> .env.tmp
 	@mv .env.tmp .env
 	$(MAKE) deploy
+
+# Deletes ALL data (named volume, no backups: CONTRACT §14.4), then recreates the schema.
+reset-db:
+	@printf "This deletes ALL Kontor data and cannot be undone. Type 'reset' to continue: "; \
+	read answer; test "$$answer" = "reset" || { echo "aborted"; exit 1; }
+	docker compose down -v
+	docker compose up -d

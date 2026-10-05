@@ -31,6 +31,7 @@ make eval                    # categorizer evaluation → JSON result file
 docker compose up -d         # local stack, built from source
 make deploy                  # pull pinned GHCR images and restart
 make rollback TAG=vX.Y.Z     # pin a previous release
+make reset-db                # delete ALL data and recreate the schema (asks for confirmation)
 docker compose logs -f api   # follow API logs, including LLM progress
 uv run alembic revision --autogenerate -m "<msg>"
 uv run alembic upgrade head
