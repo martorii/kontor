@@ -11,7 +11,7 @@ from kontor.domain.errors import (
 )
 from kontor.domain.llm import LLMOutcome, LLMRunResult
 from kontor.domain.recategorization import Candidate
-from kontor.domain.rules import RulesConfig, leaf_slugs
+from kontor.domain.rules import RulesConfig, assignable_slugs
 from kontor.ports.llm import LLMClient
 from kontor.ports.repositories import UnitOfWork
 
@@ -58,7 +58,7 @@ class LLMCategorizationStep:
             log.warning("llm_step_skipped", reason="LM Studio is not reachable")
             return LLMRunResult(dry_run=dry_run, skipped=True)
 
-        slugs = leaf_slugs(self._get_rules().categories)
+        slugs = assignable_slugs(self._get_rules().categories)
         with self._uow_factory() as uow:
             candidates = uow.transactions.list_uncategorized(import_id)
         total = len(candidates)

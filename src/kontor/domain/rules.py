@@ -22,11 +22,9 @@ class CategoryDef:
     kind: CategoryKind | None
 
 
-def leaf_slugs(categories: Iterable[CategoryDef]) -> tuple[str, ...]:
-    """The categories a transaction can be assigned to: those without subcategories."""
-    categories = tuple(categories)
-    parents = {c.parent_slug for c in categories if c.parent_slug}
-    return tuple(c.slug for c in categories if c.slug not in parents)
+def assignable_slugs(categories: Iterable[CategoryDef]) -> tuple[str, ...]:
+    """The categories a transaction can be assigned to: the subcategories (CONTRACT §5.6)."""
+    return tuple(c.slug for c in categories if c.parent_slug is not None)
 
 
 @dataclass(frozen=True, slots=True)
