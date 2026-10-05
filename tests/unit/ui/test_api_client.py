@@ -84,3 +84,18 @@ def test_unreachable_api() -> None:
 
     with pytest.raises(ApiUnreachableError):
         client_with(httpx.MockTransport(handler)).list_accounts()
+
+
+def test_report_sends_only_the_given_parameters() -> None:
+    seen: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["path"] = request.url.path
+        seen["query"] = dict(request.url.params)
+        return httpx.Response(200, json={"year": 2026})
+
+    client = client_with(httpx.MockTransport(handler))
+    client.top_merchants_report(2026, None, 3, 5)
+
+    assert seen["path"] == "/reports/top-merchants"
+    assert seen["query"] == {"year": "2026", "account_id": "3", "limit": "5"}

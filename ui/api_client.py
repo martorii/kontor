@@ -61,6 +61,28 @@ class ApiClient:
         result: dict[str, Any] = self._request("PATCH", f"/accounts/{account_id}", json=changes)
         return result
 
+    def report(self, name: str, **params: int | None) -> dict[str, Any]:
+        """Fetch /reports/<name>. Parameters left as None are not sent."""
+        query = {key: value for key, value in params.items() if value is not None}
+        result: dict[str, Any] = self._request("GET", f"/reports/{name}", params=query)
+        return result
+
+    def monthly_report(self, year: int, month: int, account_id: int | None) -> dict[str, Any]:
+        return self.report("monthly", year=year, month=month, account_id=account_id)
+
+    def year_report(self, year: int, account_id: int | None) -> dict[str, Any]:
+        return self.report("year", year=year, account_id=account_id)
+
+    def income_expenses_report(self, year: int, account_id: int | None) -> dict[str, Any]:
+        return self.report("income-expenses", year=year, account_id=account_id)
+
+    def top_merchants_report(
+        self, year: int, month: int | None, account_id: int | None, limit: int
+    ) -> dict[str, Any]:
+        return self.report(
+            "top-merchants", year=year, month=month, account_id=account_id, limit=limit
+        )
+
 
 def _detail(response: httpx.Response) -> str:
     try:
