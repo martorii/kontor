@@ -44,3 +44,7 @@ class TransactionNotFoundError(KontorError):
 
 class InvalidCategoryError(KontorError):
     """The category does not exist or is not a subcategory (CONTRACT §5.6)."""
+
+
+class MixedCurrenciesError(KontorError):
+    """The selected data spans several currencies; select one account."""

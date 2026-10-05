@@ -7,6 +7,7 @@ from kontor.adapters.db.repositories import (
     SqlAccountRepository,
     SqlCategoryRepository,
     SqlImportRepository,
+    SqlReportRepository,
     SqlTransactionRepository,
 )
 
@@ -21,6 +22,7 @@ class SqlUnitOfWork:
         self.imports = SqlImportRepository(self._session)
         self.transactions = SqlTransactionRepository(self._session)
         self.categories = SqlCategoryRepository(self._session)
+        self.reports = SqlReportRepository(self._session)
         return self
 
     def __exit__(
