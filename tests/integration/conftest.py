@@ -13,6 +13,7 @@ from sqlalchemy.engine import make_url
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
+from kontor.adapters.llm.fake import FakeLLMClient
 from kontor.api.app import create_app
 from kontor.config import Settings
 
@@ -70,8 +71,14 @@ def session(engine: Engine) -> Iterator[Session]:
 
 
 @pytest.fixture
+def fake_llm() -> FakeLLMClient:
+    """The LLM behind every client built by `make_client`. Down by default."""
+    return FakeLLMClient(healthy=False)
+
+
+@pytest.fixture
 def make_client(
-    postgres_url: str, engine: Engine, tmp_path: Path
+    postgres_url: str, engine: Engine, tmp_path: Path, fake_llm: FakeLLMClient
 ) -> Iterator[Callable[[str | None], TestClient]]:
     """Build API clients on the test database. Committed data is wiped after each test.
 
@@ -86,7 +93,7 @@ def make_client(
             rules_path = tmp_path / "rules.yaml"
             rules_path.write_text(rules_yaml)
         settings = Settings(database_url=postgres_url, rules_path=str(rules_path))
-        return stack.enter_context(TestClient(create_app(settings)))
+        return stack.enter_context(TestClient(create_app(settings, fake_llm)))
 
     yield factory
     stack.close()

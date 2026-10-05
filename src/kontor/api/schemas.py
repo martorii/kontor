@@ -2,6 +2,7 @@ from pydantic import BaseModel, ConfigDict
 
 from kontor.domain.account import Account
 from kontor.domain.imports import ImportResult
+from kontor.domain.llm import LLMRunResult
 from kontor.domain.recategorization import RerunResult
 
 
@@ -94,5 +95,46 @@ class RerunResponse(BaseModel):
                     rule_id=c.rule_id,
                 )
                 for c in result.changes
+            ],
+        )
+
+
+class LLMOutcomeResponse(BaseModel):
+    transaction_id: int
+    category: str | None
+    confidence: float | None
+    applied: bool
+    error: str | None
+
+
+class LLMRunResponse(BaseModel):
+    dry_run: bool
+    skipped: bool
+    interrupted: bool
+    evaluated: int
+    applied: int
+    suggested: int
+    failed: int
+    outcomes: list[LLMOutcomeResponse]
+
+    @classmethod
+    def from_domain(cls, result: LLMRunResult) -> "LLMRunResponse":
+        return cls(
+            dry_run=result.dry_run,
+            skipped=result.skipped,
+            interrupted=result.interrupted,
+            evaluated=result.evaluated,
+            applied=result.applied,
+            suggested=result.suggested,
+            failed=result.failed,
+            outcomes=[
+                LLMOutcomeResponse(
+                    transaction_id=o.transaction_id,
+                    category=o.suggestion.category_slug if o.suggestion else None,
+                    confidence=o.suggestion.confidence if o.suggestion else None,
+                    applied=o.applied,
+                    error=o.error,
+                )
+                for o in result.outcomes
             ],
         )

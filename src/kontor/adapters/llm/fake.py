@@ -8,8 +8,11 @@ from kontor.domain.transaction import Transaction
 class FakeLLMClient:
     """Scripted LLM for tests. Answers by counterparty, or with `default`.
 
-    Applies the same category-list check as the real adapter.
+    Applies the same category-list check as the real adapter. The attributes are public so a
+    test can change the behaviour after the app was built.
     """
+
+    model_name = "fake"
 
     def __init__(
         self,
@@ -18,20 +21,24 @@ class FakeLLMClient:
         *,
         healthy: bool = True,
         timeout: bool = False,
+        crash_on_call: int | None = None,
     ) -> None:
-        self._answers = answers or {}
-        self._default = default
-        self._healthy = healthy
-        self._timeout = timeout
+        self.answers = answers or {}
+        self.default = default
+        self.healthy = healthy
+        self.timeout = timeout
+        self.crash_on_call = crash_on_call  # 1-based call number that raises RuntimeError
         self.calls: list[Transaction] = []
 
     def classify(self, transaction: Transaction, category_slugs: Sequence[str]) -> LLMSuggestion:
         self.calls.append(transaction)
-        if not self._healthy:
+        if self.crash_on_call == len(self.calls):
+            raise RuntimeError("fake LLM crashed")
+        if not self.healthy:
             raise LLMUnavailableError("fake LLM is down")
-        if self._timeout:
+        if self.timeout:
             raise LLMTimeoutError("fake LLM timed out")
-        suggestion = self._answers.get(transaction.counterparty, self._default)
+        suggestion = self.answers.get(transaction.counterparty, self.default)
         if suggestion is None:
             raise LLMInvalidOutputError("fake LLM has no answer scripted")
         if suggestion.category_slug not in category_slugs:
@@ -41,4 +48,4 @@ class FakeLLMClient:
         return suggestion
 
     def is_healthy(self) -> bool:
-        return self._healthy
+        return self.healthy

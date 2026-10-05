@@ -4,6 +4,7 @@ from typing import Protocol, Self
 
 from kontor.domain.account import Account, NewAccount
 from kontor.domain.imports import ImportCounts, ImportRecord
+from kontor.domain.llm import LLMOutcome
 from kontor.domain.recategorization import Candidate, Change
 from kontor.domain.rules import CategoryDef
 from kontor.domain.transaction import PreparedTransaction
@@ -32,6 +33,10 @@ class ImportRepository(Protocol):
 
     def complete(self, import_id: int, counts: ImportCounts) -> ImportRecord: ...
 
+    def move_to_llm_matched(self, counts_by_import: Mapping[int, int]) -> None:
+        """Per import, move that many transactions from uncategorized to LLM-matched."""
+        ...
+
 
 class TransactionRepository(Protocol):
     def existing_fingerprints(self, account_id: int, fingerprints: Sequence[str]) -> set[str]: ...
@@ -46,6 +51,16 @@ class TransactionRepository(Protocol):
 
     def apply_rule_changes(self, changes: Sequence[Change], rules_hash: str) -> None:
         """Set the new category (source `rule`) and record one event per change."""
+        ...
+
+    def list_uncategorized(self, import_id: int | None = None) -> list[Candidate]:
+        """Transactions with no category (suggestions do not count), optionally of one import."""
+        ...
+
+    def apply_llm_outcomes(self, outcomes: Sequence[LLMOutcome], model_name: str) -> dict[int, int]:
+        """Record one event per outcome that has a suggestion. Assign the category (source
+        `llm`) where the outcome is applied and the transaction is still uncategorized.
+        Returns, per import id, how many transactions were categorized."""
         ...
 
 

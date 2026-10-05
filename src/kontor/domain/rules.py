@@ -1,3 +1,4 @@
+from collections.abc import Iterable
 from dataclasses import dataclass
 from decimal import Decimal
 from typing import Literal
@@ -19,6 +20,13 @@ class CategoryDef:
     name: str
     parent_slug: str | None
     kind: CategoryKind | None
+
+
+def leaf_slugs(categories: Iterable[CategoryDef]) -> tuple[str, ...]:
+    """The categories a transaction can be assigned to: those without subcategories."""
+    categories = tuple(categories)
+    parents = {c.parent_slug for c in categories if c.parent_slug}
+    return tuple(c.slug for c in categories if c.slug not in parents)
 
 
 @dataclass(frozen=True, slots=True)

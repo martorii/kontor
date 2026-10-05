@@ -1,4 +1,6 @@
+from collections import Counter
 from collections.abc import Mapping, Sequence
+from decimal import Decimal
 
 from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
@@ -9,6 +11,7 @@ from kontor.adapters.db import models
 from kontor.domain.account import Account, NewAccount
 from kontor.domain.errors import AccountNotFoundError, DuplicateIbanError
 from kontor.domain.imports import ImportCounts, ImportRecord
+from kontor.domain.llm import LLMOutcome
 from kontor.domain.recategorization import Candidate, Change
 from kontor.domain.rules import CategoryDef
 from kontor.domain.transaction import PreparedTransaction, Transaction
@@ -23,6 +26,28 @@ def _account(row: models.Account) -> Account:
         currency=row.currency,
         account_type=row.account_type,
         parser_format=row.parser_format,
+    )
+
+
+def _candidate(row: models.Transaction, iban: str) -> Candidate:
+    return Candidate(
+        transaction_id=row.id,
+        account_iban=iban,
+        prepared=PreparedTransaction(
+            transaction=Transaction(
+                booking_date=row.booking_date,
+                value_date=row.value_date,
+                amount=row.amount,
+                currency=row.currency,
+                counterparty=row.counterparty_raw,
+                counterparty_iban=row.counterparty_iban,
+                purpose=row.purpose,
+            ),
+            counterparty_normalized=row.counterparty_normalized,
+            fingerprint=row.fingerprint,
+        ),
+        category_slug=row.category_slug,
+        category_source=row.category_source,
     )
 
 
@@ -108,6 +133,17 @@ class SqlImportRepository:
             counts=counts,
         )
 
+    def move_to_llm_matched(self, counts_by_import: Mapping[int, int]) -> None:
+        for import_id, count in counts_by_import.items():
+            self._session.execute(
+                update(models.Import)
+                .where(models.Import.id == import_id)
+                .values(
+                    llm_matched_count=models.Import.llm_matched_count + count,
+                    uncategorized_count=models.Import.uncategorized_count - count,
+                )
+            )
+
 
 class SqlTransactionRepository:
     def __init__(self, session: Session) -> None:
@@ -163,6 +199,51 @@ class SqlTransactionRepository:
         )
         self._session.flush()
 
+    def list_uncategorized(self, import_id: int | None = None) -> list[Candidate]:
+        stmt = (
+            select(models.Transaction, models.Account.iban)
+            .join(models.Account, models.Account.id == models.Transaction.account_id)
+            .where(models.Transaction.category_source.is_(None))
+            .order_by(models.Transaction.id)
+        )
+        if import_id is not None:
+            stmt = stmt.where(models.Transaction.import_id == import_id)
+        return [_candidate(row, iban) for row, iban in self._session.execute(stmt)]
+
+    def apply_llm_outcomes(self, outcomes: Sequence[LLMOutcome], model_name: str) -> dict[int, int]:
+        applied_by_import: Counter[int] = Counter()
+        for outcome in outcomes:
+            suggestion = outcome.suggestion
+            if suggestion is None:
+                continue
+            assigned = False
+            if outcome.applied:
+                # Guarded: a transaction categorized in the meantime (e.g. manually) is kept.
+                import_id = self._session.scalar(
+                    update(models.Transaction)
+                    .where(
+                        models.Transaction.id == outcome.transaction_id,
+                        models.Transaction.category_source.is_(None),
+                    )
+                    .values(category_slug=suggestion.category_slug, category_source="llm")
+                    .returning(models.Transaction.import_id)
+                )
+                if import_id is not None:
+                    applied_by_import[import_id] += 1
+                    assigned = True
+            self._session.add(
+                models.CategorizationEvent(
+                    transaction_id=outcome.transaction_id,
+                    category_slug=suggestion.category_slug,
+                    source="llm",
+                    applied=assigned,
+                    model_name=model_name,
+                    confidence=Decimal(str(round(suggestion.confidence, 3))),
+                )
+            )
+        self._session.flush()
+        return dict(applied_by_import)
+
     def list_for_recategorization(self) -> list[Candidate]:
         stmt = (
             select(models.Transaction, models.Account.iban)
@@ -170,28 +251,7 @@ class SqlTransactionRepository:
             .where(models.Transaction.category_source.is_distinct_from("manual"))
             .order_by(models.Transaction.id)
         )
-        return [
-            Candidate(
-                transaction_id=row.id,
-                account_iban=iban,
-                prepared=PreparedTransaction(
-                    transaction=Transaction(
-                        booking_date=row.booking_date,
-                        value_date=row.value_date,
-                        amount=row.amount,
-                        currency=row.currency,
-                        counterparty=row.counterparty_raw,
-                        counterparty_iban=row.counterparty_iban,
-                        purpose=row.purpose,
-                    ),
-                    counterparty_normalized=row.counterparty_normalized,
-                    fingerprint=row.fingerprint,
-                ),
-                category_slug=row.category_slug,
-                category_source=row.category_source,
-            )
-            for row, iban in self._session.execute(stmt)
-        ]
+        return [_candidate(row, iban) for row, iban in self._session.execute(stmt)]
 
     def apply_rule_changes(self, changes: Sequence[Change], rules_hash: str) -> None:
         if not changes:
