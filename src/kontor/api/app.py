@@ -11,20 +11,23 @@ from kontor.adapters.db.uow import SqlUnitOfWork
 from kontor.adapters.llm.lmstudio import LMStudioClient
 from kontor.adapters.parsers.registry import default_registry
 from kontor.adapters.rules.yaml_source import YamlRulesSource
-from kontor.api.routers import accounts, categorization, health, imports
+from kontor.api.routers import accounts, categorization, health, imports, transactions
 from kontor.application.accounts import AccountService
 from kontor.application.categorization import CategorizationService
 from kontor.application.category_sync import sync_categories
 from kontor.application.import_service import ImportService
 from kontor.application.llm_step import LLMCategorizationStep
+from kontor.application.review import ReviewService
 from kontor.application.rules_holder import RulesHolder
 from kontor.config import Settings
 from kontor.domain.errors import (
     AccountNotFoundError,
     DuplicateFileError,
     DuplicateIbanError,
+    InvalidCategoryError,
     MalformedFileError,
     RulesFileError,
+    TransactionNotFoundError,
     UnknownFormatError,
 )
 from kontor.logging import configure_logging
@@ -34,6 +37,8 @@ _STATUS_BY_ERROR: dict[type[Exception], int] = {
     DuplicateFileError: status.HTTP_409_CONFLICT,
     DuplicateIbanError: status.HTTP_409_CONFLICT,
     AccountNotFoundError: status.HTTP_404_NOT_FOUND,
+    TransactionNotFoundError: status.HTTP_404_NOT_FOUND,
+    InvalidCategoryError: status.HTTP_422_UNPROCESSABLE_CONTENT,
     UnknownFormatError: status.HTTP_422_UNPROCESSABLE_CONTENT,
     MalformedFileError: status.HTTP_422_UNPROCESSABLE_CONTENT,
     RulesFileError: status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -86,6 +91,7 @@ def create_app(settings: Settings | None = None, llm_client: LLMClient | None = 
         uow_factory, default_registry().detect, lambda: rules.current, llm_step
     )
     app.state.account_service = AccountService(uow_factory)
+    app.state.review_service = ReviewService(uow_factory)
     app.state.categorization_service = CategorizationService(uow_factory, rules)
 
     for error in _STATUS_BY_ERROR:
@@ -94,4 +100,5 @@ def create_app(settings: Settings | None = None, llm_client: LLMClient | None = 
     app.include_router(imports.router)
     app.include_router(accounts.router)
     app.include_router(categorization.router)
+    app.include_router(transactions.router)
     return app
