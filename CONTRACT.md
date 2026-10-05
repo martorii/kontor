@@ -100,7 +100,7 @@ A decision changes only when the developer explicitly decides so. Every change i
   - A rule-categorized transaction that no rule matches anymore (for example after the rule was removed or narrowed) is reset to uncategorized, and the reset is recorded as an event without a category.
   - A dry run validates the YAML and previews the changes with the new rules, but does not activate them or write anything, including new categories.
   - The response lists the rules hash, the counts (evaluated, changed, unchanged) and each change.
-- **7.9** The LLM is not re-run automatically on old transactions. A separate endpoint runs the LLM step on currently uncategorized transactions on demand, for example after LM Studio was offline.
+- **7.9** The LLM is not re-run automatically on old transactions. A separate endpoint runs the LLM step on currently uncategorized transactions on demand, for example after LM Studio was offline. It is `POST /categorization/llm`, with a `dry_run` option that calls the LLM but writes nothing. It also asks again for transactions that only have a stored suggestion.
 
 ## 8. Import
 
@@ -211,3 +211,4 @@ These are decided during implementation and then moved into the sections above:
 - **2026-10-04** — Rule matching semantics decided (§6.5a, §6.6a): signed, inclusive amount range; normalized matching.
 - **2026-10-04** — Re-categorization decided (§7.8): rule results with no matching rule are reset to uncategorized; dry run activates nothing.
 - **2026-10-05** — LLM confidence decided (§7.4): logprob-based probability, default threshold 0.80; removed open item 15.4.
+- **2026-10-05** — LLM step in the import flow (§7.9, §8.4, §8.6): on-demand endpoint `POST /categorization/llm` with `dry_run`; batch size defaults to 10.

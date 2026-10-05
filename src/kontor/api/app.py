@@ -8,6 +8,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from kontor.adapters.db.uow import SqlUnitOfWork
+from kontor.adapters.llm.lmstudio import LMStudioClient
 from kontor.adapters.parsers.registry import default_registry
 from kontor.adapters.rules.yaml_source import YamlRulesSource
 from kontor.api.routers import accounts, categorization, health, imports
@@ -15,6 +16,7 @@ from kontor.application.accounts import AccountService
 from kontor.application.categorization import CategorizationService
 from kontor.application.category_sync import sync_categories
 from kontor.application.import_service import ImportService
+from kontor.application.llm_step import LLMCategorizationStep
 from kontor.application.rules_holder import RulesHolder
 from kontor.config import Settings
 from kontor.domain.errors import (
@@ -26,6 +28,7 @@ from kontor.domain.errors import (
     UnknownFormatError,
 )
 from kontor.logging import configure_logging
+from kontor.ports.llm import LLMClient
 
 _STATUS_BY_ERROR: dict[type[Exception], int] = {
     DuplicateFileError: status.HTTP_409_CONFLICT,
@@ -44,7 +47,7 @@ def _handle_domain_error(request: Request, exc: Exception) -> JSONResponse:
     )
 
 
-def create_app(settings: Settings | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, llm_client: LLMClient | None = None) -> FastAPI:
     settings = settings or Settings()
     configure_logging(settings)
     rules = RulesHolder(YamlRulesSource(Path(settings.rules_path)))
@@ -61,10 +64,26 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         sync_categories(uow_factory, rules.load().categories)
         yield
 
+    llm_step = LLMCategorizationStep(
+        uow_factory,
+        llm_client
+        or LMStudioClient(
+            settings.llm_base_url,
+            settings.llm_model,
+            settings.llm_timeout_seconds,
+            settings.llm_api_key,
+        ),
+        lambda: rules.current,
+        threshold=settings.llm_confidence_threshold,
+        concurrency=settings.llm_concurrency,
+        batch_size=settings.llm_batch_size,
+    )
+
     app = FastAPI(title="Kontor", lifespan=lifespan)
+    app.state.llm_step = llm_step
     app.state.rules = rules
     app.state.import_service = ImportService(
-        uow_factory, default_registry().detect, lambda: rules.current
+        uow_factory, default_registry().detect, lambda: rules.current, llm_step
     )
     app.state.account_service = AccountService(uow_factory)
     app.state.categorization_service = CategorizationService(uow_factory, rules)

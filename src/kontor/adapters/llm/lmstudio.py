@@ -35,6 +35,10 @@ class LMStudioClient:
             base_url=base_url, api_key=api_key, timeout=timeout_seconds, max_retries=0
         )
 
+    @property
+    def model_name(self) -> str:
+        return self._model
+
     def is_healthy(self) -> bool:
         try:
             self._client.models.list()

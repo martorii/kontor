@@ -4,6 +4,7 @@ from dataclasses import replace
 
 import structlog
 
+from kontor.application.llm_step import LLMCategorizationStep
 from kontor.domain.account import NewAccount
 from kontor.domain.errors import DuplicateFileError
 from kontor.domain.fingerprint import fingerprint_all
@@ -26,10 +27,12 @@ class ImportService:
         uow_factory: Callable[[], UnitOfWork],
         detect_parser: Callable[[bytes], BankParser],
         get_rules: Callable[[], RulesConfig],
+        llm_step: LLMCategorizationStep | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._detect_parser = detect_parser
         self._get_rules = get_rules
+        self._llm_step = llm_step
 
     def import_file(self, file_name: str, content: bytes) -> ImportResult:
         """Parse, deduplicate and persist one file in a single database transaction.
@@ -104,6 +107,18 @@ class ImportService:
                 )
             finally:
                 structlog.contextvars.unbind_contextvars("import_id")
+
+        # The file is committed. The LLM step can only add to it (CONTRACT §8.3, §8.4).
+        if self._llm_step is not None and counts.uncategorized:
+            llm = self._llm_step.run(import_id=record.id)
+            record = replace(
+                record,
+                counts=replace(
+                    counts,
+                    llm_matched=llm.applied,
+                    uncategorized=counts.uncategorized - llm.applied,
+                ),
+            )
         return ImportResult(record=record, account_created=account_created)
 
     @staticmethod
