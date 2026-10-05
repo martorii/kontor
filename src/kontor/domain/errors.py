@@ -36,3 +36,11 @@ class LLMTimeoutError(KontorError):
 
 class LLMInvalidOutputError(KontorError):
     """The LLM answer is unusable: bad JSON, a category outside the list, or no logprobs."""
+
+
+class TransactionNotFoundError(KontorError):
+    """No transaction with the given id exists."""
+
+
+class InvalidCategoryError(KontorError):
+    """The category does not exist or is not a subcategory (CONTRACT §5.6)."""

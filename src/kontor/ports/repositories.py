@@ -6,6 +6,7 @@ from kontor.domain.account import Account, NewAccount
 from kontor.domain.imports import ImportCounts, ImportRecord
 from kontor.domain.llm import LLMOutcome
 from kontor.domain.recategorization import Candidate, Change
+from kontor.domain.review import ManualOverride, UncategorizedPage
 from kontor.domain.rules import CategoryDef
 from kontor.domain.transaction import PreparedTransaction
 
@@ -33,6 +34,10 @@ class ImportRepository(Protocol):
 
     def complete(self, import_id: int, counts: ImportCounts) -> ImportRecord: ...
 
+    def release_for_manual(self, import_id: int, previous_source: str | None) -> None:
+        """A transaction of this import became manual: drop it from the count it was in."""
+        ...
+
     def move_to_llm_matched(self, counts_by_import: Mapping[int, int]) -> None:
         """Per import, move that many transactions from uncategorized to LLM-matched."""
         ...
@@ -57,6 +62,17 @@ class TransactionRepository(Protocol):
         """Transactions with no category (suggestions do not count), optionally of one import."""
         ...
 
+    def list_uncategorized_page(self, limit: int, offset: int) -> UncategorizedPage:
+        """Uncategorized transactions with their unapplied LLM suggestions, newest first."""
+        ...
+
+    def set_manual_category(self, transaction_id: int, category_slug: str) -> ManualOverride:
+        """Assign the category (source `manual`) and record the event.
+
+        Raises TransactionNotFoundError.
+        """
+        ...
+
     def apply_llm_outcomes(self, outcomes: Sequence[LLMOutcome], model_name: str) -> dict[int, int]:
         """Record one event per outcome that has a suggestion. Assign the category (source
         `llm`) where the outcome is applied and the transaction is still uncategorized.
@@ -65,6 +81,10 @@ class TransactionRepository(Protocol):
 
 
 class CategoryRepository(Protocol):
+    def is_assignable(self, slug: str) -> bool:
+        """True if the category exists and is a subcategory."""
+        ...
+
     def upsert_all(self, categories: Sequence[CategoryDef]) -> None:
         """Insert new categories and update name, parent and kind of existing ones."""
         ...

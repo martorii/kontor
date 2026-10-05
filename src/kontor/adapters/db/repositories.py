@@ -2,17 +2,27 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from kontor.adapters.db import models
 from kontor.domain.account import Account, NewAccount
-from kontor.domain.errors import AccountNotFoundError, DuplicateIbanError
+from kontor.domain.errors import (
+    AccountNotFoundError,
+    DuplicateIbanError,
+    TransactionNotFoundError,
+)
 from kontor.domain.imports import ImportCounts, ImportRecord
 from kontor.domain.llm import LLMOutcome
 from kontor.domain.recategorization import Candidate, Change
+from kontor.domain.review import (
+    ManualOverride,
+    Suggestion,
+    UncategorizedPage,
+    UncategorizedTransaction,
+)
 from kontor.domain.rules import CategoryDef
 from kontor.domain.transaction import PreparedTransaction, Transaction
 
@@ -133,6 +143,20 @@ class SqlImportRepository:
             counts=counts,
         )
 
+    def release_for_manual(self, import_id: int, previous_source: str | None) -> None:
+        column = {
+            None: models.Import.uncategorized_count,
+            "rule": models.Import.rule_matched_count,
+            "llm": models.Import.llm_matched_count,
+        }.get(previous_source)
+        if column is None:  # manual to manual: already outside every count
+            return
+        self._session.execute(
+            update(models.Import)
+            .where(models.Import.id == import_id)
+            .values({column.key: column - 1})
+        )
+
     def move_to_llm_matched(self, counts_by_import: Mapping[int, int]) -> None:
         for import_id, count in counts_by_import.items():
             self._session.execute(
@@ -244,6 +268,76 @@ class SqlTransactionRepository:
         self._session.flush()
         return dict(applied_by_import)
 
+    def list_uncategorized_page(self, limit: int, offset: int) -> UncategorizedPage:
+        uncategorized = models.Transaction.category_source.is_(None)
+        total = self._session.scalar(select(func.count()).where(uncategorized)) or 0
+        rows = self._session.scalars(
+            select(models.Transaction)
+            .where(uncategorized)
+            .order_by(models.Transaction.booking_date.desc(), models.Transaction.id.desc())
+            .limit(limit)
+            .offset(offset)
+        ).all()
+        events = self._session.scalars(
+            select(models.CategorizationEvent)
+            .where(
+                models.CategorizationEvent.transaction_id.in_([r.id for r in rows]),
+                models.CategorizationEvent.source == "llm",
+                models.CategorizationEvent.applied.is_(False),
+            )
+            .order_by(
+                models.CategorizationEvent.created_at.desc(), models.CategorizationEvent.id.desc()
+            )
+        ).all()
+        suggestions: dict[int, list[Suggestion]] = {}
+        for event in events:
+            suggestions.setdefault(event.transaction_id, []).append(
+                Suggestion(
+                    category_slug=event.category_slug,
+                    confidence=float(event.confidence) if event.confidence is not None else None,
+                    model_name=event.model_name,
+                    created_at=event.created_at,
+                )
+            )
+        return UncategorizedPage(
+            total=total,
+            items=tuple(
+                UncategorizedTransaction(
+                    transaction_id=row.id,
+                    account_id=row.account_id,
+                    booking_date=row.booking_date,
+                    amount=row.amount,
+                    currency=row.currency,
+                    counterparty=row.counterparty_raw,
+                    purpose=row.purpose,
+                    suggestions=tuple(suggestions.get(row.id, ())),
+                )
+                for row in rows
+            ),
+        )
+
+    def set_manual_category(self, transaction_id: int, category_slug: str) -> ManualOverride:
+        row = self._session.scalar(
+            select(models.Transaction)
+            .where(models.Transaction.id == transaction_id)
+            .with_for_update()
+        )
+        if row is None:
+            raise TransactionNotFoundError(f"transaction {transaction_id} not found")
+        previous_source = row.category_source
+        row.category_slug = category_slug
+        row.category_source = "manual"
+        self._session.add(
+            models.CategorizationEvent(
+                transaction_id=transaction_id,
+                category_slug=category_slug,
+                source="manual",
+                applied=True,
+            )
+        )
+        self._session.flush()
+        return ManualOverride(transaction_id, row.import_id, previous_source)
+
     def list_for_recategorization(self) -> list[Candidate]:
         stmt = (
             select(models.Transaction, models.Account.iban)
@@ -284,6 +378,12 @@ class SqlTransactionRepository:
 class SqlCategoryRepository:
     def __init__(self, session: Session) -> None:
         self._session = session
+
+    def is_assignable(self, slug: str) -> bool:
+        stmt = select(models.Category.slug).where(
+            models.Category.slug == slug, models.Category.parent_slug.is_not(None)
+        )
+        return self._session.scalar(stmt) is not None
 
     def upsert_all(self, categories: Sequence[CategoryDef]) -> None:
         # Parents first, so the foreign key of every subcategory is satisfied.

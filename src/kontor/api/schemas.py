@@ -1,9 +1,13 @@
+from datetime import date, datetime
+from decimal import Decimal
+
 from pydantic import BaseModel, ConfigDict
 
 from kontor.domain.account import Account
 from kontor.domain.imports import ImportResult
 from kontor.domain.llm import LLMRunResult
 from kontor.domain.recategorization import RerunResult
+from kontor.domain.review import UncategorizedPage
 
 
 class AccountResponse(BaseModel):
@@ -138,3 +142,71 @@ class LLMRunResponse(BaseModel):
                 for o in result.outcomes
             ],
         )
+
+
+class SuggestionResponse(BaseModel):
+    category: str | None
+    confidence: float | None
+    model: str | None
+    created_at: datetime
+
+
+class UncategorizedTransactionResponse(BaseModel):
+    id: int
+    account_id: int
+    booking_date: date
+    amount: Decimal
+    currency: str
+    counterparty: str
+    purpose: str
+    suggestions: list[SuggestionResponse]  # newest first
+
+
+class UncategorizedPageResponse(BaseModel):
+    total: int
+    limit: int
+    offset: int
+    items: list[UncategorizedTransactionResponse]
+
+    @classmethod
+    def from_domain(
+        cls, page: UncategorizedPage, limit: int, offset: int
+    ) -> "UncategorizedPageResponse":
+        return cls(
+            total=page.total,
+            limit=limit,
+            offset=offset,
+            items=[
+                UncategorizedTransactionResponse(
+                    id=t.transaction_id,
+                    account_id=t.account_id,
+                    booking_date=t.booking_date,
+                    amount=t.amount,
+                    currency=t.currency,
+                    counterparty=t.counterparty,
+                    purpose=t.purpose,
+                    suggestions=[
+                        SuggestionResponse(
+                            category=s.category_slug,
+                            confidence=s.confidence,
+                            model=s.model_name,
+                            created_at=s.created_at,
+                        )
+                        for s in t.suggestions
+                    ],
+                )
+                for t in page.items
+            ],
+        )
+
+
+class CategorySet(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    category: str
+
+
+class CategorySetResponse(BaseModel):
+    transaction_id: int
+    category: str
+    source: str

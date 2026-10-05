@@ -90,7 +90,7 @@ A decision changes only when the developer explicitly decides so. Every change i
   - timestamp
 
   The current category and its source are stored on the transaction. The full history, including suggestions that were not applied, is stored in `categorization_events`.
-- **7.7** **Manual categorizations are never overwritten** by rules or by the LLM.
+- **7.7** **Manual categorizations are never overwritten** by rules or by the LLM. A manual categorization can override any other category through `PUT /transactions/{id}/category` (subcategories only). `GET /transactions/uncategorized` lists open transactions, paginated, with their unapplied LLM suggestions (newest first) and confidences. A transaction that becomes manual leaves the import count it was in (rule-matched, LLM-matched or uncategorized).
 - **7.8** `POST /categorization/rerun` re-applies the rules:
   - It reloads and validates the YAML first.
   - It re-evaluates uncategorized, rule-categorized, and LLM-categorized transactions.
@@ -212,3 +212,4 @@ These are decided during implementation and then moved into the sections above:
 - **2026-10-04** — Re-categorization decided (§7.8): rule results with no matching rule are reset to uncategorized; dry run activates nothing.
 - **2026-10-05** — LLM confidence decided (§7.4): logprob-based probability, default threshold 0.80; removed open item 15.4.
 - **2026-10-05** — LLM step in the import flow (§7.9, §8.4, §8.6): on-demand endpoint `POST /categorization/llm` with `dry_run`; batch size defaults to 10.
+- **2026-10-05** — Manual categorization API decided (§7.7): override endpoint, paginated uncategorized list with suggestions, import counts follow overrides.
