@@ -4,7 +4,7 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict
 
 from kontor.domain.account import Account
-from kontor.domain.imports import ImportResult
+from kontor.domain.imports import ImportRecord, ImportResult
 from kontor.domain.llm import LLMRunResult
 from kontor.domain.recategorization import RerunResult
 from kontor.domain.review import UncategorizedPage
@@ -58,6 +58,34 @@ class ImportResponse(BaseModel):
             account_created=result.account_created,
             file_name=record.file_name,
             status=record.status,
+            new_count=record.counts.new,
+            duplicate_count=record.counts.duplicates,
+            rule_matched_count=record.counts.rule_matched,
+            llm_matched_count=record.counts.llm_matched,
+            uncategorized_count=record.counts.uncategorized,
+        )
+
+
+class ImportRecordResponse(BaseModel):
+    id: int
+    account_id: int
+    file_name: str
+    status: str
+    created_at: datetime
+    new_count: int
+    duplicate_count: int
+    rule_matched_count: int
+    llm_matched_count: int
+    uncategorized_count: int
+
+    @classmethod
+    def from_domain(cls, record: ImportRecord) -> "ImportRecordResponse":
+        return cls(
+            id=record.id,
+            account_id=record.account_id,
+            file_name=record.file_name,
+            status=record.status,
+            created_at=record.created_at,
             new_count=record.counts.new,
             duplicate_count=record.counts.duplicates,
             rule_matched_count=record.counts.rule_matched,

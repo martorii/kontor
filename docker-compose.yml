@@ -49,5 +49,18 @@ services:
       timeout: 3s
       retries: 10
 
+  ui:
+    build:
+      context: .
+      dockerfile: ui/Dockerfile
+    image: ghcr.io/martorii/kontor-ui:${KONTOR_TAG:-v0.1.2} # x-release-please-version
+    environment:
+      API_URL: http://api:8000
+    ports:
+      - "${UI_PORT:-8501}:8501"
+    depends_on:
+      api:
+        condition: service_healthy
+
 volumes:
   kontor_pgdata:

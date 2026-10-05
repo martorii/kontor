@@ -36,6 +36,7 @@ jobs:
       packages: write
     env:
       IMAGE: ghcr.io/${{ github.repository_owner }}/kontor-api
+      UI_IMAGE: ghcr.io/${{ github.repository_owner }}/kontor-ui
       # Image tag is v<version> (not the git tag, which release-please prefixes with the
       # package name) so it matches KONTOR_TAG in docker-compose.yml and `make rollback TAG=vX.Y.Z`.
       TAG: v${{ needs.release-please.outputs.version }}
@@ -58,3 +59,12 @@ jobs:
           tags: |
             ${{ env.IMAGE }}:${{ env.TAG }}
             ${{ env.IMAGE }}:latest
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ui/Dockerfile
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: |
+            ${{ env.UI_IMAGE }}:${{ env.TAG }}
+            ${{ env.UI_IMAGE }}:latest

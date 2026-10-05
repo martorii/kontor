@@ -121,3 +121,15 @@ def test_patching_to_an_existing_iban_conflicts(client: TestClient) -> None:
     response = client.patch(f"/accounts/{first}", json={"iban": other_iban})
 
     assert response.status_code == 409
+
+
+def test_import_history_lists_imports_newest_first(client: TestClient) -> None:
+    upload(client, dkb_file([row("10.03.26", "Shop A", "-1,00")]), "march.csv")
+    upload(client, dkb_file([row("10.04.26", "Shop B", "-2,00")]), "april.csv")
+
+    history = client.get("/imports").json()
+
+    assert [h["file_name"] for h in history] == ["april.csv", "march.csv"]
+    assert history[0]["status"] == "completed"
+    assert history[0]["new_count"] == 1
+    assert history[0]["created_at"]

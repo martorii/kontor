@@ -41,6 +41,10 @@ class ImportRepository(Protocol):
 
     def complete(self, import_id: int, counts: ImportCounts) -> ImportRecord: ...
 
+    def list(self) -> list[ImportRecord]:
+        """Every import, newest first."""
+        ...
+
     def release_for_manual(self, import_id: int, previous_source: str | None) -> None:
         """A transaction of this import became manual: drop it from the count it was in."""
         ...

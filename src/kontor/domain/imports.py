@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -17,6 +18,7 @@ class ImportRecord:
     file_name: str
     file_hash: str
     status: str
+    created_at: datetime
     counts: ImportCounts
 
 

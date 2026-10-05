@@ -3,11 +3,9 @@ FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 WORKDIR /app
 
+# Only the `ui` dependency group: the UI image carries no backend code and no database driver.
 COPY pyproject.toml uv.lock README.md ./
-RUN uv sync --locked --no-dev --no-group ui --no-install-project
-
-COPY src ./src
-RUN uv sync --locked --no-dev --no-group ui --no-editable
+RUN uv sync --locked --no-dev --only-group ui --no-install-project
 
 
 FROM python:3.12-slim-bookworm AS runtime
@@ -18,9 +16,8 @@ WORKDIR /app
 COPY --from=builder --chown=kontor:kontor /app/.venv /app/.venv
 ENV PATH="/app/.venv/bin:$PATH" PYTHONUNBUFFERED=1
 
-COPY --chown=kontor:kontor alembic.ini ./
-COPY --chown=kontor:kontor migrations ./migrations
+COPY --chown=kontor:kontor ui ./ui
 
 USER kontor
-EXPOSE 8000
-CMD ["uvicorn", "--factory", "kontor.api.app:create_app", "--host", "0.0.0.0", "--port", "8000"]
+EXPOSE 8501
+CMD ["streamlit", "run", "ui/app.py", "--server.address=0.0.0.0", "--server.port=8501", "--server.headless=true", "--browser.gatherUsageStats=false"]

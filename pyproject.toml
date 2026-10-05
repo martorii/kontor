@@ -33,11 +33,18 @@ dev = [
     "ruff",
     "types-pyyaml>=6.0.12.20260906",
 ]
+ui = [
+    "httpx2>=2.13.1",
+    "streamlit>=1.65.0",
+]
+
+[tool.uv]
+default-groups = ["dev", "ui"]
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-src = ["src", "tests"]
+src = ["src", "tests", "ui"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "B", "UP", "SIM"]
@@ -45,10 +52,11 @@ select = ["E", "F", "I", "B", "UP", "SIM"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-mypy_path = "src"
-files = ["src", "tests"]
+mypy_path = "src:ui"
+files = ["src", "tests", "ui"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["ui"]
 addopts = "-m 'not llm'"
 markers = ["llm: tests that need the real LM Studio (local only)"]
