@@ -4,6 +4,7 @@ from kontor.application.accounts import AccountService
 from kontor.application.categorization import CategorizationService
 from kontor.application.import_service import ImportService
 from kontor.application.llm_step import LLMCategorizationStep
+from kontor.application.reports import ReportService
 from kontor.application.review import ReviewService
 
 
@@ -29,4 +30,9 @@ def get_llm_step(request: Request) -> LLMCategorizationStep:
 
 def get_review_service(request: Request) -> ReviewService:
     service: ReviewService = request.app.state.review_service
+    return service
+
+
+def get_report_service(request: Request) -> ReportService:
+    service: ReportService = request.app.state.report_service
     return service

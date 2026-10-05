@@ -2,7 +2,7 @@ from collections import Counter
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
 
-from sqlalchemy import func, select, update
+from sqlalchemy import func, or_, select, text, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -17,6 +17,14 @@ from kontor.domain.errors import (
 from kontor.domain.imports import ImportCounts, ImportRecord
 from kontor.domain.llm import LLMOutcome
 from kontor.domain.recategorization import Candidate, Change
+from kontor.domain.reports import (
+    CategorySpendingRow,
+    ExplorerPage,
+    ExplorerTransaction,
+    IncomeExpensesRow,
+    MerchantRow,
+    TransactionFilter,
+)
 from kontor.domain.review import (
     ManualOverride,
     Suggestion,
@@ -316,6 +324,60 @@ class SqlTransactionRepository:
             ),
         )
 
+    def search(self, filters: TransactionFilter, limit: int, offset: int) -> ExplorerPage:
+        stmt = select(models.Transaction)
+        if filters.account_id is not None:
+            stmt = stmt.where(models.Transaction.account_id == filters.account_id)
+        if filters.date_from is not None:
+            stmt = stmt.where(models.Transaction.booking_date >= filters.date_from)
+        if filters.date_to is not None:
+            stmt = stmt.where(models.Transaction.booking_date <= filters.date_to)
+        if filters.category is not None:
+            children = select(models.Category.slug).where(
+                models.Category.parent_slug == filters.category
+            )
+            stmt = stmt.where(
+                or_(
+                    models.Transaction.category_slug == filters.category,
+                    models.Transaction.category_slug.in_(children),
+                )
+            )
+        if filters.text:
+            stmt = stmt.where(
+                or_(
+                    models.Transaction.counterparty_raw.icontains(filters.text, autoescape=True),
+                    models.Transaction.purpose.icontains(filters.text, autoescape=True),
+                )
+            )
+        if filters.source == "none":
+            stmt = stmt.where(models.Transaction.category_source.is_(None))
+        elif filters.source is not None:
+            stmt = stmt.where(models.Transaction.category_source == filters.source)
+
+        total = self._session.scalar(select(func.count()).select_from(stmt.subquery())) or 0
+        rows = self._session.scalars(
+            stmt.order_by(models.Transaction.booking_date.desc(), models.Transaction.id.desc())
+            .limit(limit)
+            .offset(offset)
+        )
+        return ExplorerPage(
+            total=total,
+            items=tuple(
+                ExplorerTransaction(
+                    transaction_id=row.id,
+                    account_id=row.account_id,
+                    booking_date=row.booking_date,
+                    amount=row.amount,
+                    currency=row.currency,
+                    counterparty=row.counterparty_raw,
+                    purpose=row.purpose,
+                    category=row.category_slug,
+                    category_source=row.category_source,
+                )
+                for row in rows
+            ),
+        )
+
     def set_manual_category(self, transaction_id: int, category_slug: str) -> ManualOverride:
         row = self._session.scalar(
             select(models.Transaction)
@@ -409,3 +471,66 @@ class SqlCategoryRepository:
                     },
                 )
             )
+
+
+def _view_filters(month: int | None, account_id: int | None) -> tuple[str, dict[str, int]]:
+    """WHERE fragments over the report views. Only constant SQL; values are bound."""
+    sql = "year = :year"
+    params: dict[str, int] = {}
+    if month is not None:
+        sql += " AND month = :month"
+        params["month"] = month
+    if account_id is not None:
+        sql += " AND account_id = :account_id"
+        params["account_id"] = account_id
+    return sql, params
+
+
+class SqlReportRepository:
+    """Reads the report views created by the migrations (CONTRACT §11.3)."""
+
+    def __init__(self, session: Session) -> None:
+        self._session = session
+
+    def category_spending(
+        self, year: int, month: int | None, account_id: int | None
+    ) -> list[CategorySpendingRow]:
+        where, params = _view_filters(month, account_id)
+        result = self._session.execute(
+            text(
+                "SELECT currency, top_slug, top_name, sub_slug, sub_name, uncategorized, "
+                "SUM(spent) AS spent, SUM(transaction_count)::int AS transaction_count "
+                f"FROM v_monthly_category_spending WHERE {where} "
+                "GROUP BY currency, top_slug, top_name, sub_slug, sub_name, uncategorized"
+            ),
+            {"year": year, **params},
+        )
+        return [CategorySpendingRow(**row._mapping) for row in result]
+
+    def income_expenses(self, year: int, account_id: int | None) -> list[IncomeExpensesRow]:
+        where, params = _view_filters(None, account_id)
+        result = self._session.execute(
+            text(
+                "SELECT currency, month, SUM(income) AS income, SUM(expenses) AS expenses, "
+                "SUM(uncategorized_count)::int AS uncategorized_count "
+                f"FROM v_monthly_income_expenses WHERE {where} GROUP BY currency, month"
+            ),
+            {"year": year, **params},
+        )
+        return [IncomeExpensesRow(**row._mapping) for row in result]
+
+    def top_merchants(
+        self, year: int, month: int | None, account_id: int | None, limit: int
+    ) -> list[MerchantRow]:
+        where, params = _view_filters(month, account_id)
+        result = self._session.execute(
+            text(
+                "SELECT currency, counterparty_normalized AS merchant, SUM(spent) AS spent, "
+                "SUM(transaction_count)::int AS transaction_count "
+                f"FROM v_merchant_spending WHERE {where} "
+                "GROUP BY currency, counterparty_normalized "
+                "ORDER BY SUM(spent) DESC, counterparty_normalized LIMIT :limit"
+            ),
+            {"year": year, "limit": limit, **params},
+        )
+        return [MerchantRow(**row._mapping) for row in result]

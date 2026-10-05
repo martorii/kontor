@@ -6,6 +6,13 @@ from kontor.domain.account import Account, NewAccount
 from kontor.domain.imports import ImportCounts, ImportRecord
 from kontor.domain.llm import LLMOutcome
 from kontor.domain.recategorization import Candidate, Change
+from kontor.domain.reports import (
+    CategorySpendingRow,
+    ExplorerPage,
+    IncomeExpensesRow,
+    MerchantRow,
+    TransactionFilter,
+)
 from kontor.domain.review import ManualOverride, UncategorizedPage
 from kontor.domain.rules import CategoryDef
 from kontor.domain.transaction import PreparedTransaction
@@ -66,6 +73,10 @@ class TransactionRepository(Protocol):
         """Uncategorized transactions with their unapplied LLM suggestions, newest first."""
         ...
 
+    def search(self, filters: TransactionFilter, limit: int, offset: int) -> ExplorerPage:
+        """The transaction explorer: filtered, newest first."""
+        ...
+
     def set_manual_category(self, transaction_id: int, category_slug: str) -> ManualOverride:
         """Assign the category (source `manual`) and record the event.
 
@@ -78,6 +89,18 @@ class TransactionRepository(Protocol):
         `llm`) where the outcome is applied and the transaction is still uncategorized.
         Returns, per import id, how many transactions were categorized."""
         ...
+
+
+class ReportRepository(Protocol):
+    def category_spending(
+        self, year: int, month: int | None, account_id: int | None
+    ) -> list[CategorySpendingRow]: ...
+
+    def income_expenses(self, year: int, account_id: int | None) -> list[IncomeExpensesRow]: ...
+
+    def top_merchants(
+        self, year: int, month: int | None, account_id: int | None, limit: int
+    ) -> list[MerchantRow]: ...
 
 
 class CategoryRepository(Protocol):
@@ -104,6 +127,9 @@ class UnitOfWork(Protocol):
 
     @property
     def categories(self) -> CategoryRepository: ...
+
+    @property
+    def reports(self) -> ReportRepository: ...
 
     def __enter__(self) -> Self: ...
 

@@ -19,6 +19,14 @@ def row(day: str, payee: str, amount: str, status: str = "Gebucht") -> str:
     )
 
 
+def incoming_row(day: str, payer: str, amount: str) -> str:
+    """A booking with money coming in: the counterparty is the payer."""
+    return (
+        f'"{day}";"{day}";"Gebucht";"{payer}";"Erika Musterfrau";"Gutschrift";"Eingang";'
+        f'"";"{amount}";"";"";""'
+    )
+
+
 def dkb_file(rows: list[str], iban: str = IBAN) -> bytes:
     preamble = f'"Girokonto";"{iban}"\n"Zeitraum:";"01.03.2026 - 31.03.2026"\n""\n'
     return (preamble + HEADER + "\n" + "\n".join(rows) + "\n").encode()
