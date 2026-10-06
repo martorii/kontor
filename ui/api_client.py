@@ -22,22 +22,32 @@ class ApiUnreachableError(Exception):
     """The API cannot be reached."""
 
 
+class ApiTimeoutError(ApiUnreachableError):
+    """The API was reachable but did not answer in time. The request may still be running."""
+
+
 @dataclass(frozen=True, slots=True)
 class ApiClient:
     base_url: str = DEFAULT_API_URL
-    timeout: float = 300.0  # an upload runs the LLM step synchronously (CONTRACT §8.2)
+    timeout: float = 300.0
+    upload_timeout: float = 1800.0  # an upload runs the LLM step synchronously (CONTRACT §8.2)
     transport: httpx.BaseTransport | None = None
 
     @classmethod
     def from_env(cls) -> "ApiClient":
         return cls(base_url=os.environ.get("API_URL", DEFAULT_API_URL))
 
-    def _request(self, method: str, path: str, **kwargs: Any) -> Any:
+    def _request(
+        self, method: str, path: str, *, timeout: float | None = None, **kwargs: Any
+    ) -> Any:
+        seconds = self.timeout if timeout is None else timeout
         try:
             with httpx.Client(
-                base_url=self.base_url, timeout=self.timeout, transport=self.transport
+                base_url=self.base_url, timeout=seconds, transport=self.transport
             ) as client:
                 response = client.request(method, path, **kwargs)
+        except httpx.TimeoutException as exc:
+            raise ApiTimeoutError(f"the API did not answer within {seconds:.0f} seconds") from exc
         except httpx.TransportError as exc:
             raise ApiUnreachableError(f"cannot reach the API at {self.base_url}") from exc
         if response.is_error:
@@ -46,7 +56,9 @@ class ApiClient:
 
     def upload_import(self, file_name: str, content: bytes) -> dict[str, Any]:
         files = {"file": (file_name, content, "text/csv")}
-        result: dict[str, Any] = self._request("POST", "/imports", files=files)
+        result: dict[str, Any] = self._request(
+            "POST", "/imports", files=files, timeout=self.upload_timeout
+        )
         return result
 
     def list_imports(self) -> list[dict[str, Any]]:

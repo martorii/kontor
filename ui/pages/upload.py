@@ -1,6 +1,6 @@
 import streamlit as st
 
-from api_client import ApiClient, ApiError, ApiUnreachableError
+from api_client import ApiClient, ApiError, ApiTimeoutError, ApiUnreachableError
 
 api = ApiClient.from_env()
 
@@ -14,6 +14,11 @@ if uploaded is not None and st.button("Import", type="primary"):
             result = api.upload_import(uploaded.name, uploaded.getvalue())
     except ApiError as exc:
         st.error(f"Import failed: {exc.detail}")
+    except ApiTimeoutError as exc:
+        st.warning(
+            f"{exc} The import may still be running on the API, because the LLM step can take "
+            "a long time. Check **Import history** before uploading the file again."
+        )
     except ApiUnreachableError as exc:
         st.error(str(exc))
     else:
