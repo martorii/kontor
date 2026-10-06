@@ -42,3 +42,13 @@ class LLMRunResult:
     suggested: int = 0  # below the threshold, stored as suggestions only
     failed: int = 0
     outcomes: tuple[LLMOutcome, ...] = ()
+
+
+@dataclass(frozen=True, slots=True)
+class LLMProgress:
+    """A snapshot of the running LLM step: how many transactions are done out of the total."""
+
+    running: bool = False
+    processed: int = 0
+    total: int = 0
+    import_id: int | None = None  # None for a run over all uncategorized transactions

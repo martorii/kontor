@@ -120,6 +120,7 @@ A decision changes only when the developer explicitly decides so. Every change i
   - latency
 
   A summary line closes the step.
+- **8.7a** `GET /categorization/llm/progress` reports the running LLM step: `running`, `processed`, `total` and the `import_id` it belongs to (null for a run over all uncategorized transactions). It is kept in memory, tracks one run at a time, and is lost on restart. The UI polls it to show a progress bar during an upload.
 - **8.8** Every upload is recorded in an `imports` table: account, file name, file hash, timestamp, status, and counts (new, duplicates, rule-matched, LLM-matched, uncategorized).
 
 ## 9. Idempotency
@@ -223,3 +224,4 @@ None for v1. Decided since the first draft: accounts always have an IBAN (§4.2a
 - **2026-10-05** — Added `GET /categories` (§11.1a) so the UI can offer category pickers; the monthly overview can override a category through the §7.7 endpoint.
 - **2026-10-06** — Evaluation harness decided (§12.3a, §12.4a): metric definitions, prompt hash, export and result files.
 - **2026-10-06** — v1 cleanup: every account has an IBAN (§4.2a, closes 15.3); the repository is public (closes 15.5); §15 has no open items.
+- **2026-10-06** — LLM progress endpoint decided (§8.7a): in-memory progress of the running LLM step, for the upload progress bar.

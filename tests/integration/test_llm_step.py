@@ -156,3 +156,25 @@ def test_on_demand_run_is_skipped_when_llm_is_down(
 
     assert body["skipped"] is True
     assert body["evaluated"] == 0
+
+
+def test_progress_is_idle_before_a_run_and_complete_after_it(
+    make_client: MakeClient, fake_llm: FakeLLMClient
+) -> None:
+    fake_llm.healthy = True
+    fake_llm.default = LLMSuggestion("food.groceries", 0.95)
+    client = make_client(RULES)
+
+    assert client.get("/categorization/llm/progress").json() == {
+        "running": False,
+        "processed": 0,
+        "total": 0,
+        "import_id": None,
+    }
+
+    upload(client, dkb_file([row("10.03.26", "A", "-1,00"), row("11.03.26", "B", "-2,00")]))
+
+    progress = client.get("/categorization/llm/progress").json()
+    assert progress["running"] is False
+    assert (progress["processed"], progress["total"]) == (2, 2)
+    assert progress["import_id"] is not None

@@ -61,6 +61,10 @@ class ApiClient:
         )
         return result
 
+    def llm_progress(self) -> dict[str, Any]:
+        result: dict[str, Any] = self._request("GET", "/categorization/llm/progress")
+        return result
+
     def list_imports(self) -> list[dict[str, Any]]:
         result: list[dict[str, Any]] = self._request("GET", "/imports")
         return result
