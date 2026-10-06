@@ -201,7 +201,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
   - The UI code contains no DB access.
 
 ### Step 18 — Streamlit report views
-- [ ] **Scope**
+- [x] **Scope**
   - monthly overview with drill-down
   - year comparison
   - income vs. expenses
@@ -209,7 +209,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
 - **Pass gate** — Manual: each view's numbers match the API responses for the seeded data.
 
 ### Step 19 — Streamlit review tab and transaction explorer
-- [ ] **Scope**
+- [x] **Scope**
   - the review tab: uncategorized transactions and suggestions, one-click assignment
   - the transaction explorer with filters
   - a button to trigger a rerun, with a dry-run preview
@@ -218,13 +218,13 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
 ## Phase E — Evaluation and release
 
 ### Step 20 — Evaluation harness
-- [ ] **Scope**
+- [x] **Scope**
   - an export of manual categorizations into a gitignored labeled set
   - `make eval` writing a JSON result file (CONTRACT §12.3)
 - **Pass gate** — `make eval` runs locally and produces a result file with every metric filled in.
 
 ### Step 21 — v1 release
-- [ ] **Scope**
+- [x] **Scope**
   - a README with setup from a fresh clone: LM Studio, `rules.yaml`, `.env`, `make deploy`
   - CONTRACT §15 cleaned up
   - release `v1.0.0`
