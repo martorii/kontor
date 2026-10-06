@@ -27,6 +27,7 @@ make format-check            # uv run ruff format --check .
 make typecheck               # uv run mypy src tests
 make test                    # uv run pytest (excludes -m llm)
 make test-llm                # tests against the real LM Studio (local only)
+make eval-export             # manual categorizations → eval_export.jsonl (gitignored)
 make eval                    # categorizer evaluation → JSON result file
 docker compose up -d         # local stack, built from source
 make deploy                  # pull pinned GHCR images and restart

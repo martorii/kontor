@@ -1,4 +1,4 @@
-.PHONY: lint format format-check typecheck test test-llm migrate-check deploy rollback reset-db
+.PHONY: lint format format-check typecheck test test-llm migrate-check deploy rollback reset-db eval eval-export
 
 lint:
 	uv run ruff check .
@@ -28,6 +28,15 @@ migrate-check:
 deploy:
 	docker compose pull
 	docker compose up -d
+
+# Export manual categorizations to the gitignored eval_export.jsonl. Needs DATABASE_URL.
+eval-export:
+	uv run python -m kontor.eval_cli export
+
+# Run the labeled set through the real LLM and write eval_results/eval-<timestamp>.json.
+# Needs LM Studio (LLM_BASE_URL, LLM_MODEL in .env) and config/rules.yaml.
+eval:
+	uv run python -m kontor.eval_cli run
 
 # Pin a previous release: make rollback TAG=vX.Y.Z
 rollback:

@@ -9,6 +9,11 @@ class LLMClient(Protocol):
     @property
     def model_name(self) -> str: ...
 
+    @property
+    def prompt_hash(self) -> str:
+        """Identifies the prompt text, so eval results can be tied to a prompt version."""
+        ...
+
     def classify(self, transaction: Transaction, category_slugs: Sequence[str]) -> LLMSuggestion:
         """Pick one of `category_slugs` for the transaction.
 
