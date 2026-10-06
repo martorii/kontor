@@ -84,3 +84,36 @@ def test_unreachable_api() -> None:
 
     with pytest.raises(ApiUnreachableError):
         client_with(httpx.MockTransport(handler)).list_accounts()
+
+
+def test_report_sends_only_the_given_parameters() -> None:
+    seen: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["path"] = request.url.path
+        seen["query"] = dict(request.url.params)
+        return httpx.Response(200, json={"year": 2026})
+
+    client = client_with(httpx.MockTransport(handler))
+    client.top_merchants_report(2026, None, 3, 5)
+
+    assert seen["path"] == "/reports/top-merchants"
+    assert seen["query"] == {"year": "2026", "account_id": "3", "limit": "5"}
+
+
+def test_set_category_puts_the_slug_for_the_transaction() -> None:
+    seen: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["method"] = request.method
+        seen["path"] = request.url.path
+        seen["json"] = json.loads(request.content)
+        return httpx.Response(200, json={"transaction_id": 4, "source": "manual"})
+
+    client_with(httpx.MockTransport(handler)).set_category(4, "food.groceries")
+
+    assert (seen["method"], seen["path"], seen["json"]) == (
+        "PUT",
+        "/transactions/4/category",
+        {"category": "food.groceries"},
+    )

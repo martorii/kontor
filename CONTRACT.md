@@ -157,7 +157,7 @@ A decision changes only when the developer explicitly decides so. Every change i
   - Uncategorized transactions are a separate `uncategorized` bucket: negative amounts count as expenses and positive amounts as income. Reports flag this as provisional (`includes_uncategorized`).
   - The savings rate is `(income − expenses) / income`, null without income.
   - Reports assume one currency. If the selected data has several, the endpoint returns 422 and asks for an account.
-  - Endpoints: `/reports/monthly`, `/reports/year`, `/reports/income-expenses`, `/reports/top-merchants`, and `GET /transactions` for the explorer. All take an optional `account_id` where it applies.
+  - Endpoints: `/reports/monthly`, `/reports/year`, `/reports/income-expenses`, `/reports/top-merchants`, `GET /transactions` for the explorer, and `GET /categories` for the assignable subcategories. All take an optional `account_id` where it applies.
 - **11.2** The UI also lets the user view and edit accounts.
 - **11.3** Aggregations live in **FastAPI endpoints backed by SQL views**, not in Streamlit. The views are tested with pytest against Postgres.
 - **11.4** Budgets, recurring-payment detection, and running balances are not part of v1.
@@ -220,3 +220,4 @@ These are decided during implementation and then moved into the sections above:
 - **2026-10-05** — LLM step in the import flow (§7.9, §8.4, §8.6): on-demand endpoint `POST /categorization/llm` with `dry_run`; batch size defaults to 10.
 - **2026-10-05** — Manual categorization API decided (§7.7): override endpoint, paginated uncategorized list with suggestions, import counts follow overrides.
 - **2026-10-05** — Reporting semantics decided (§11.1a): spending, refunds, uncategorized bucket, savings rate, single currency.
+- **2026-10-05** — Added `GET /categories` (§11.1a) so the UI can offer category pickers; the monthly overview can override a category through the §7.7 endpoint.

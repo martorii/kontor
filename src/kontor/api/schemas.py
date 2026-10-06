@@ -8,6 +8,7 @@ from kontor.domain.imports import ImportRecord, ImportResult
 from kontor.domain.llm import LLMRunResult
 from kontor.domain.recategorization import RerunResult
 from kontor.domain.review import UncategorizedPage
+from kontor.domain.rules import CategoryDef
 
 
 class AccountResponse(BaseModel):
@@ -226,6 +227,16 @@ class UncategorizedPageResponse(BaseModel):
                 for t in page.items
             ],
         )
+
+
+class CategoryResponse(BaseModel):
+    slug: str
+    name: str
+    parent_slug: str | None
+
+    @classmethod
+    def from_domain(cls, category: CategoryDef) -> "CategoryResponse":
+        return cls(slug=category.slug, name=category.name, parent_slug=category.parent_slug)
 
 
 class CategorySet(BaseModel):

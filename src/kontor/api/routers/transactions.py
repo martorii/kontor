@@ -4,7 +4,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Query
 
 from kontor.api.dependencies import get_report_service, get_review_service
-from kontor.api.schemas import CategorySet, CategorySetResponse, UncategorizedPageResponse
+from kontor.api.schemas import (
+    CategoryResponse,
+    CategorySet,
+    CategorySetResponse,
+    UncategorizedPageResponse,
+)
 from kontor.application.reports import ReportService
 from kontor.application.review import ReviewService
 from kontor.domain.reports import CategorySource, ExplorerPage, TransactionFilter
@@ -30,6 +35,12 @@ def explore(
     of `none` means uncategorized."""
     filters = TransactionFilter(account_id, date_from, date_to, category, q, source)
     return service.search_transactions(filters, limit, offset)
+
+
+@router.get("/categories")
+def list_categories(service: Service) -> list[CategoryResponse]:
+    """The assignable (sub)categories, for the UI's category pickers."""
+    return [CategoryResponse.from_domain(c) for c in service.list_subcategories()]
 
 
 @router.get("/transactions/uncategorized")
