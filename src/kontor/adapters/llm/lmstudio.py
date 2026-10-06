@@ -1,6 +1,9 @@
+import hashlib
 import json
 import math
 from collections.abc import Sequence
+from datetime import date
+from decimal import Decimal
 
 import openai
 from openai import OpenAI
@@ -38,6 +41,10 @@ class LMStudioClient:
     @property
     def model_name(self) -> str:
         return self._model
+
+    @property
+    def prompt_hash(self) -> str:
+        return PROMPT_HASH
 
     def is_healthy(self) -> bool:
         try:
@@ -119,3 +126,14 @@ def _category_probability(category: str, tokens: Sequence[tuple[str, float]]) ->
             total += logprob
         position = token_end
     return min(1.0, math.exp(total))
+
+
+def _prompt_hash() -> str:
+    """Hash of the system prompt and the rendered user-message template, so editing either
+    changes it."""
+    sample = Transaction(date(2000, 1, 1), Decimal("-1.00"), "EUR", "COUNTERPARTY", "PURPOSE")
+    rendered = _describe(sample, ["category.one", "category.two"])
+    return hashlib.sha256(f"{SYSTEM_PROMPT}\n---\n{rendered}".encode()).hexdigest()
+
+
+PROMPT_HASH = _prompt_hash()

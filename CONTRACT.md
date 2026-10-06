@@ -175,6 +175,8 @@ A decision changes only when the developer explicitly decides so. Every change i
   - model name
   - prompt hash
 - **12.4** The labeled set is exported from manual categorizations. The export is gitignored.
+- **12.3a** Eval definitions: accuracies and coverage are computed over the transactions the LLM answered (failed calls are counted separately). Coverage is the share of answers with confidence at or above the threshold (default: the import threshold, §7.4); covered accuracy is the subcategory accuracy among them. The prompt hash is a SHA-256 over the system prompt and the rendered user-message template. Labeled examples whose category no longer exists in `rules.yaml` are skipped and counted.
+- **12.4a** `make eval-export` writes `eval_export.jsonl`; `make eval` reads it and writes `eval_results/eval-<timestamp>.json`. Both paths are gitignored. The labeled set is biased toward transactions the rules did not settle, and the result file says so.
 - **12.5** Running the eval in CI is not part of v1.
 
 ## 13. CI/CD and workflow
@@ -221,3 +223,4 @@ These are decided during implementation and then moved into the sections above:
 - **2026-10-05** — Manual categorization API decided (§7.7): override endpoint, paginated uncategorized list with suggestions, import counts follow overrides.
 - **2026-10-05** — Reporting semantics decided (§11.1a): spending, refunds, uncategorized bucket, savings rate, single currency.
 - **2026-10-05** — Added `GET /categories` (§11.1a) so the UI can offer category pickers; the monthly overview can override a category through the §7.7 endpoint.
+- **2026-10-06** — Evaluation harness decided (§12.3a, §12.4a): metric definitions, prompt hash, export and result files.

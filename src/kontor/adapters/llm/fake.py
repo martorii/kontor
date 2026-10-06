@@ -13,6 +13,7 @@ class FakeLLMClient:
     """
 
     model_name = "fake"
+    prompt_hash = "fake"
 
     def __init__(
         self,
