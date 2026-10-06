@@ -8,6 +8,8 @@ navigation = st.navigation(
         st.Page("pages/year.py", title="Year comparison", icon="📊"),
         st.Page("pages/income_expenses.py", title="Income vs. expenses", icon="💰"),
         st.Page("pages/merchants.py", title="Top merchants", icon="🏪"),
+        st.Page("pages/review.py", title="Review", icon="📝"),
+        st.Page("pages/explorer.py", title="Transaction explorer", icon="🔎"),
         st.Page("pages/upload.py", title="Upload", icon="⬆️"),
         st.Page("pages/imports.py", title="Import history", icon="🕘"),
         st.Page("pages/accounts.py", title="Accounts", icon="🏦"),
