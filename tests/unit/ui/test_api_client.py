@@ -117,3 +117,20 @@ def test_set_category_puts_the_slug_for_the_transaction() -> None:
         "/transactions/4/category",
         {"category": "food.groceries"},
     )
+
+
+def test_rerun_rules_sends_the_dry_run_flag_and_uncategorized_the_paging() -> None:
+    seen: list[tuple[str, str, dict[str, str]]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((request.method, request.url.path, dict(request.url.params)))
+        return httpx.Response(200, json={})
+
+    client = client_with(httpx.MockTransport(handler))
+    client.rerun_rules(dry_run=True)
+    client.uncategorized(25, 50)
+
+    assert seen == [
+        ("POST", "/categorization/rerun", {"dry_run": "true"}),
+        ("GET", "/transactions/uncategorized", {"limit": "25", "offset": "50"}),
+    ]

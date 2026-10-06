@@ -67,6 +67,18 @@ class ApiClient:
         result: dict[str, Any] = self._request("GET", "/transactions", params=query)
         return result
 
+    def uncategorized(self, limit: int, offset: int = 0) -> dict[str, Any]:
+        result: dict[str, Any] = self._request(
+            "GET", "/transactions/uncategorized", params={"limit": limit, "offset": offset}
+        )
+        return result
+
+    def rerun_rules(self, dry_run: bool) -> dict[str, Any]:
+        result: dict[str, Any] = self._request(
+            "POST", "/categorization/rerun", params={"dry_run": dry_run}
+        )
+        return result
+
     def list_categories(self) -> list[dict[str, Any]]:
         result: list[dict[str, Any]] = self._request("GET", "/categories")
         return result
