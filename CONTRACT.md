@@ -42,6 +42,7 @@ A decision changes only when the developer explicitly decides so. Every change i
 
 - **4.1** Kontor supports multiple accounts and multiple bank providers.
 - **4.2** An upload is matched to its account by the **IBAN found in the file**.
+- **4.2a** Every account has an IBAN. A bank format whose files carry no IBAN is not supported; its parser must be able to provide one.
 - **4.3** When the IBAN matches no existing account, Kontor **creates the account automatically**: bank and account type come from the parser, and the name gets a default. Every account field can be edited afterwards through the API and the UI.
 
 ## 5. Categories
@@ -203,10 +204,7 @@ A decision changes only when the developer explicitly decides so. Every change i
 
 ## 15. Open items
 
-These are decided during implementation and then moved into the sections above:
-
-- **15.3** How an account is identified for future formats that contain no IBAN.
-- **15.5** Whether the repo is public or private.
+None for v1. Decided since the first draft: accounts always have an IBAN (§4.2a), and the repository is public.
 
 ---
 
@@ -224,3 +222,4 @@ These are decided during implementation and then moved into the sections above:
 - **2026-10-05** — Reporting semantics decided (§11.1a): spending, refunds, uncategorized bucket, savings rate, single currency.
 - **2026-10-05** — Added `GET /categories` (§11.1a) so the UI can offer category pickers; the monthly overview can override a category through the §7.7 endpoint.
 - **2026-10-06** — Evaluation harness decided (§12.3a, §12.4a): metric definitions, prompt hash, export and result files.
+- **2026-10-06** — v1 cleanup: every account has an IBAN (§4.2a, closes 15.3); the repository is public (closes 15.5); §15 has no open items.
