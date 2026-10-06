@@ -3,7 +3,7 @@ import json
 import httpx2 as httpx
 import pytest
 
-from api_client import ApiClient, ApiError, ApiUnreachableError
+from api_client import ApiClient, ApiError, ApiTimeoutError, ApiUnreachableError
 
 
 def client_with(handler: httpx.MockTransport) -> ApiClient:
@@ -134,3 +134,34 @@ def test_rerun_rules_sends_the_dry_run_flag_and_uncategorized_the_paging() -> No
         ("POST", "/categorization/rerun", {"dry_run": "true"}),
         ("GET", "/transactions/uncategorized", {"limit": "25", "offset": "50"}),
     ]
+
+
+def test_a_slow_answer_is_a_timeout_not_an_unreachable_api() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("too slow", request=request)
+
+    client = client_with(httpx.MockTransport(handler))
+
+    with pytest.raises(ApiTimeoutError, match="did not answer"):
+        client.upload_import("march.csv", b"a;b")
+    # Pages that only know ApiUnreachableError still handle it.
+    with pytest.raises(ApiUnreachableError):
+        client.list_accounts()
+
+
+def test_upload_uses_its_own_longer_timeout() -> None:
+    seen: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["timeout"] = request.extensions["timeout"]
+        return httpx.Response(201, json={})
+
+    client = ApiClient(
+        base_url="http://api.test",
+        timeout=5.0,
+        upload_timeout=99.0,
+        transport=httpx.MockTransport(handler),
+    )
+    client.upload_import("march.csv", b"a;b")
+
+    assert seen["timeout"] == {"connect": 99.0, "read": 99.0, "write": 99.0, "pool": 99.0}

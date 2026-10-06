@@ -4,6 +4,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import structlog
 
+from kontor.application.llm_progress import LLMProgressTracker
 from kontor.domain.errors import (
     LLMInvalidOutputError,
     LLMTimeoutError,
@@ -35,6 +36,7 @@ class LLMCategorizationStep:
         threshold: float,
         concurrency: int = 1,
         batch_size: int = 10,
+        progress: LLMProgressTracker | None = None,
     ) -> None:
         self._uow_factory = uow_factory
         self._client = client
@@ -42,6 +44,11 @@ class LLMCategorizationStep:
         self._threshold = threshold
         self._concurrency = concurrency
         self._batch_size = batch_size
+        self._progress = progress or LLMProgressTracker()
+
+    @property
+    def progress(self) -> LLMProgressTracker:
+        return self._progress
 
     def run(self, import_id: int | None = None, dry_run: bool = False) -> LLMRunResult:
         """Run on the uncategorized transactions of one import, or on all of them."""
@@ -64,6 +71,7 @@ class LLMCategorizationStep:
         total = len(candidates)
         log.info("llm_step_started", total=total, model=self._client.model_name, dry_run=dry_run)
 
+        self._progress.start(total, import_id)
         outcomes: list[LLMOutcome] = []
         interrupted = False
         done = 0
@@ -77,6 +85,7 @@ class LLMCategorizationStep:
                         batch, self._classify(pool, batch, slugs), strict=True
                     ):
                         done += 1
+                        self._progress.advance(done)
                         self._log_transaction(candidate, outcome, latency, done, total)
                         batch_outcomes.append(outcome)
                     outcomes.extend(batch_outcomes)
@@ -89,6 +98,8 @@ class LLMCategorizationStep:
         except Exception:  # the import is already committed; keep what was written
             log.exception("llm_step_interrupted", done=done, total=total)
             interrupted = True
+        finally:
+            self._progress.finish()
 
         result = LLMRunResult(
             dry_run=dry_run,

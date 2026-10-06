@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict
 
 from kontor.domain.account import Account
 from kontor.domain.imports import ImportRecord, ImportResult
-from kontor.domain.llm import LLMRunResult
+from kontor.domain.llm import LLMProgress, LLMRunResult
 from kontor.domain.recategorization import RerunResult
 from kontor.domain.review import UncategorizedPage
 from kontor.domain.rules import CategoryDef
@@ -138,6 +138,22 @@ class LLMOutcomeResponse(BaseModel):
     confidence: float | None
     applied: bool
     error: str | None
+
+
+class LLMProgressResponse(BaseModel):
+    running: bool
+    processed: int
+    total: int
+    import_id: int | None
+
+    @classmethod
+    def from_domain(cls, progress: LLMProgress) -> "LLMProgressResponse":
+        return cls(
+            running=progress.running,
+            processed=progress.processed,
+            total=progress.total,
+            import_id=progress.import_id,
+        )
 
 
 class LLMRunResponse(BaseModel):
