@@ -153,7 +153,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
   - an invalid YAML keeping the old rules active
 
 ### Step 13 — LLM adapter
-- [ ] **Scope**
+- [x] **Scope**
   - the LLM port, the LM Studio adapter (JSON-schema output, health check, timeout), and the fake adapter
   - the confidence threshold setting
   - the default threshold is decided (CONTRACT §15.4)
@@ -162,7 +162,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
   - `make test-llm` passes locally against LM Studio.
 
 ### Step 14 — LLM in the import flow
-- [ ] **Scope**
+- [x] **Scope**
   - the LLM step after the commit, writing in batches
   - per-transaction and summary log lines (CONTRACT §8.7)
   - skip when LM Studio is down
@@ -173,7 +173,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
   - A manual check shows the log lines in `docker compose logs -f api`.
 
 ### Step 15 — Manual categorization API
-- [ ] **Scope**
+- [x] **Scope**
   - endpoints to list uncategorized transactions with their suggestions, and to set a category manually (as an override)
 - **Pass gate** — tests cover:
   - a manual override recorded with source `manual`
@@ -183,7 +183,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
 ## Phase D — Reporting and UI
 
 ### Step 16 — Reporting views and endpoints
-- [ ] **Scope**
+- [x] **Scope**
   - SQL views (in migrations) and endpoints for: monthly overview, year comparison, income vs. expenses, top merchants
   - a transaction explorer query with filters
 - **Pass gate**
@@ -192,7 +192,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
   - Tests assert that the filters work.
 
 ### Step 17 — Streamlit shell, upload, import history, accounts
-- [ ] **Scope**
+- [x] **Scope**
   - the `ui` service in compose
   - an API client module
   - pages for upload (showing the import summary), import history, and accounts (view and edit)
@@ -201,7 +201,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
   - The UI code contains no DB access.
 
 ### Step 18 — Streamlit report views
-- [ ] **Scope**
+- [x] **Scope**
   - monthly overview with drill-down
   - year comparison
   - income vs. expenses
@@ -209,7 +209,7 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
 - **Pass gate** — Manual: each view's numbers match the API responses for the seeded data.
 
 ### Step 19 — Streamlit review tab and transaction explorer
-- [ ] **Scope**
+- [x] **Scope**
   - the review tab: uncategorized transactions and suggestions, one-click assignment
   - the transaction explorer with filters
   - a button to trigger a rerun, with a dry-run preview
@@ -218,13 +218,13 @@ This plan builds `CONTRACT.md` step by step. The developer guides every step. No
 ## Phase E — Evaluation and release
 
 ### Step 20 — Evaluation harness
-- [ ] **Scope**
+- [x] **Scope**
   - an export of manual categorizations into a gitignored labeled set
   - `make eval` writing a JSON result file (CONTRACT §12.3)
 - **Pass gate** — `make eval` runs locally and produces a result file with every metric filled in.
 
 ### Step 21 — v1 release
-- [ ] **Scope**
+- [x] **Scope**
   - a README with setup from a fresh clone: LM Studio, `rules.yaml`, `.env`, `make deploy`
   - CONTRACT §15 cleaned up
   - release `v1.0.0`
