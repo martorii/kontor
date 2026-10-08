@@ -15,6 +15,6 @@ class Settings(BaseSettings):
     llm_model: str = ""
     llm_api_key: str = "lm-studio"
     llm_timeout_seconds: float = 60.0
-    llm_confidence_threshold: float = 0.80
+    llm_confidence_threshold: float = 0.95
     llm_concurrency: int = Field(default=1, ge=1)
     llm_batch_size: int = Field(default=10, ge=1)
