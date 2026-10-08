@@ -80,7 +80,7 @@ A decision changes only when the developer explicitly decides so. Every change i
 - **7.1** Order: **rules → LLM → uncategorized**.
 - **7.2** The LLM sees only transactions that no rule matched.
 - **7.3** The LLM's output is constrained to the category list through a JSON schema, and comes with a confidence score.
-- **7.4** Below a configurable confidence threshold, the LLM's answer is stored as a **suggestion**, and the transaction stays uncategorized. The default threshold is **0.80**. Confidence is the model's probability of the chosen category, computed from token logprobs (never a self-reported score); the category is constrained to the allowed list with JSON-schema structured output.
+- **7.4** Below a configurable confidence threshold, the LLM's answer is stored as a **suggestion**, and the transaction stays uncategorized. The default threshold is **0.95**. Confidence is the model's probability of the chosen category, computed from token logprobs (never a self-reported score); the category is constrained to the allowed list with JSON-schema structured output.
 - **7.5** Uncategorized transactions are stored in the database and resolved later in the review tab.
 - **7.6** Every categorization records its provenance:
   - source (`rule`, `llm`, or `manual`)
@@ -225,3 +225,4 @@ None for v1. Decided since the first draft: accounts always have an IBAN (§4.2a
 - **2026-10-06** — Evaluation harness decided (§12.3a, §12.4a): metric definitions, prompt hash, export and result files.
 - **2026-10-06** — v1 cleanup: every account has an IBAN (§4.2a, closes 15.3); the repository is public (closes 15.5); §15 has no open items.
 - **2026-10-06** — LLM progress endpoint decided (§8.7a): in-memory progress of the running LLM step, for the upload progress bar.
+- **2026-10-08** — LLM default threshold raised to 0.95 (§7.4) because of poor LLM accuracy; answers below it stay unapplied suggestions.
