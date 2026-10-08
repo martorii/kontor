@@ -1,6 +1,6 @@
 [project]
 name = "kontor"
-version = "1.0.0"
+version = "1.0.1"
 description = "Local bank-export categorizer and spending reports."
 readme = "README.md"
 requires-python = ">=3.12,<3.13"

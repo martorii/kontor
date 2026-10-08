@@ -1,5 +1,20 @@
 # Changelog
 
+## [1.0.1](https://github.com/martorii/kontor/compare/kontor-v1.0.0...kontor-v1.0.1) (2026-10-08)
+
+
+### Bug Fixes
+
+* raise default LLM confidence threshold to 0.95 ([f4d81a4](https://github.com/martorii/kontor/commit/f4d81a45a9323e5a3b539d1d6f1bca6e5766fb77))
+* raise default LLM confidence threshold to 0.95 ([8f1def5](https://github.com/martorii/kontor/commit/8f1def56353f7c3becdb05660f234ff010dba933))
+
+
+### Documentation
+
+* tick off plan steps 13 to 17 ([f066a2c](https://github.com/martorii/kontor/commit/f066a2ce7a761865e6b3096fed2333f26307a52f))
+* tick off plan steps 13 to 21 ([535b257](https://github.com/martorii/kontor/commit/535b25762ec14560f25835c52964f3e7b81a5a25))
+* tick off plan steps 18 to 21 ([fad3fe0](https://github.com/martorii/kontor/commit/fad3fe039cf38a134a6b833a1656e5ffa4adb265))
+
 ## [1.0.0](https://github.com/martorii/kontor/compare/kontor-v0.1.2...kontor-v1.0.0) (2026-10-06)
 
 
