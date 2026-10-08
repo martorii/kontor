@@ -89,7 +89,7 @@ def test_interruption_keeps_imported_rows_and_committed_batches(
     make_client: MakeClient, engine: Engine, fake_llm: FakeLLMClient
 ) -> None:
     fake_llm.healthy = True
-    fake_llm.default = LLMSuggestion("shopping.home", 0.9)
+    fake_llm.default = LLMSuggestion("shopping.home", 0.97)
     fake_llm.crash_on_call = 15  # second batch of 10
     client = make_client(RULES)
 
@@ -130,7 +130,7 @@ def test_on_demand_run_dry_run_then_real_run(
     assert (low["evaluated"], low["applied"], low["suggested"]) == (1, 0, 1)
 
     # LM Studio gets better answers; the transaction with a suggestion is asked again.
-    fake_llm.default = LLMSuggestion("food.groceries", 0.9)
+    fake_llm.default = LLMSuggestion("food.groceries", 0.97)
     dry = client.post("/categorization/llm", params={"dry_run": True}).json()
     assert dry["dry_run"] is True
     assert (dry["evaluated"], dry["applied"]) == (1, 1)
