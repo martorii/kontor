@@ -149,7 +149,7 @@ A decision changes only when the developer explicitly decides so. Every change i
 - **11.1** v1 contains these views:
   1. **Monthly overview** — spending per top-level category per month, with drill-down to subcategories
   2. **Year view / comparison** — totals per category for a year, compared with the previous year
-  3. **Top merchants** — spending by normalized counterparty
+  3. **Top merchants** — spending by normalized counterparty, for a date range and one or more accounts
   4. **Transaction explorer** — filterable by account, date range, category, text, and categorization source
   5. **Review tab** — uncategorized transactions and LLM suggestions, assigned manually
   6. **Import history** — each upload with its counts and status
@@ -157,7 +157,11 @@ A decision changes only when the developer explicitly decides so. Every change i
   - **Spending** is the outflow in `expense` categories, and refunds (positive amounts in an expense category) reduce it. `income` categories count as income. `transfer` and `savings` count as neither (§5.4).
   - Uncategorized transactions are a separate `uncategorized` bucket: negative amounts count as expenses and positive amounts as income. Reports flag this as provisional (`includes_uncategorized`).
   - Reports assume one currency. If the selected data has several, the endpoint returns 422 and asks for an account.
-  - Endpoints: `/reports/monthly`, `/reports/year`, `/reports/top-merchants`, `GET /transactions` for the explorer, and `GET /categories` for the assignable subcategories. All take an optional `account_id` where it applies.
+  - Endpoints: `/reports/monthly`, `/reports/year`, `/reports/top-merchants`, `GET /transactions` for the explorer, and `GET /categories` for the assignable subcategories. The other report endpoints take an optional `account_id`.
+- **11.1b** Top merchants:
+  - `/reports/top-merchants` takes `date_from` and `date_to` (inclusive, by booking date) and a repeatable `account_ids`. No accounts means all accounts.
+  - A missing bound defaults to the first or last booking date available for the selected accounts. `/reports/date-bounds` returns those dates.
+  - A start date after the end date returns 422.
 - **11.2** The UI also lets the user view and edit accounts.
 - **11.3** Aggregations live in **FastAPI endpoints backed by SQL views**, not in Streamlit. The views are tested with pytest against Postgres.
 - **11.4** Budgets, recurring-payment detection, and running balances are not part of v1.
@@ -226,3 +230,4 @@ None for v1. Decided since the first draft: accounts always have an IBAN (§4.2a
 - **2026-10-08** — LLM default threshold raised to 0.95 (§7.4) because of poor LLM accuracy; answers below it stay unapplied suggestions.
 - **2026-10-10** — Removed the Income vs. expenses report (§11.1, §11.1a): the UI tab, the `/reports/income-expenses` endpoint and the `v_monthly_income_expenses` view.
 - **2026-10-10** — LLM concurrency default raised from 1 to 4 (§8.6).
+- **2026-10-11** — Top merchants take a date range and several accounts (§11.1, §11.1a, §11.1b); they no longer take a year and month.

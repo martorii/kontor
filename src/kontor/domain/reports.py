@@ -89,9 +89,17 @@ class MerchantTotal:
 
 
 @dataclass(frozen=True, slots=True)
+class DateBounds:
+    first: date
+    last: date
+
+
+@dataclass(frozen=True, slots=True)
 class TopMerchants:
-    year: int
-    month: int | None
+    """date_from and date_to are the range applied, or None when there are no transactions."""
+
+    date_from: date | None
+    date_to: date | None
     currency: str | None
     merchants: tuple[MerchantTotal, ...]
 
