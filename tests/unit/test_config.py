@@ -75,3 +75,42 @@ def test_agent_query_limits_must_be_positive(
     monkeypatch.setenv(name, value)
     with pytest.raises(ValidationError):
         _settings()
+
+
+def test_agent_llm_settings_have_no_fallback_to_the_categorizer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setenv("CATEGORIZER_LLM_BASE_URL", "http://llm.test/v1")
+    monkeypatch.setenv("CATEGORIZER_LLM_MODEL", "test-model")
+
+    settings = _settings()
+
+    assert settings.agent_llm_base_url == ""
+    assert settings.agent_llm_model == ""
+
+
+def test_agent_defaults_match_the_contract() -> None:
+    settings = _settings()
+
+    assert settings.agent_max_retries == 2
+    assert settings.agent_summary_rows == 50
+    assert settings.agent_max_turns == 10
+    assert settings.agent_conversation_ttl_minutes == 60
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("AGENT_LLM_TIMEOUT_SECONDS", "0"),
+        ("AGENT_MAX_RETRIES", "-1"),
+        ("AGENT_SUMMARY_ROWS", "0"),
+        ("AGENT_MAX_TURNS", "0"),
+        ("AGENT_CONVERSATION_TTL_MINUTES", "0"),
+    ],
+)
+def test_agent_settings_are_validated(
+    monkeypatch: pytest.MonkeyPatch, name: str, value: str
+) -> None:
+    monkeypatch.setenv(name, value)
+    with pytest.raises(ValidationError):
+        _settings()
