@@ -19,6 +19,7 @@ from kontor.application.agent_conversations import ConversationStore
 from kontor.application.sql_validator import validate_query
 from kontor.domain.agent import NO_CHART, AgentAnswer, ChartSpec, FailedAttempt, Summary, Turn
 from kontor.domain.errors import (
+    ConversationNotFoundError,
     LLMInvalidOutputError,
     QueryExecutionError,
     QueryTimeoutError,
@@ -236,6 +237,11 @@ class AgentService:
     @property
     def model_name(self) -> str:
         return self._llm.model_name
+
+    def forget(self, conversation_id: str) -> None:
+        """Drop a conversation. Raises ConversationNotFoundError if it does not exist."""
+        if not self._store.delete(conversation_id):
+            raise ConversationNotFoundError(conversation_id)
 
     def ask(self, question: str, conversation_id: str | None) -> tuple[str, AgentAnswer]:
         """Answer `question`. An unknown or expired conversation id starts a new conversation."""

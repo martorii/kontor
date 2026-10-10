@@ -51,8 +51,26 @@ def test_api_refuses_to_start_without_categorizer_llm(
         create_app(_settings(**overrides))
 
 
-def test_api_starts_with_categorizer_llm_set() -> None:
-    create_app(_settings(categorizer_llm_base_url="http://llm.test/v1", categorizer_llm_model="m"))
+CATEGORIZER = {"categorizer_llm_base_url": "http://llm.test/v1", "categorizer_llm_model": "m"}
+AGENT = {"agent_llm_base_url": "http://llm.test/v1", "agent_llm_model": "m"}
+
+
+@pytest.mark.parametrize(
+    ("overrides", "missing"),
+    [
+        ({}, "AGENT_LLM_BASE_URL and AGENT_LLM_MODEL"),
+        ({"agent_llm_model": "m"}, "AGENT_LLM_BASE_URL must"),
+        ({"agent_llm_base_url": "http://llm.test/v1"}, "AGENT_LLM_MODEL must"),
+        ({"agent_llm_base_url": "http://llm.test/v1", "agent_llm_model": " "}, "MODEL must"),
+    ],
+)
+def test_api_refuses_to_start_without_agent_llm(overrides: dict[str, str], missing: str) -> None:
+    with pytest.raises(ConfigurationError, match=missing):
+        create_app(_settings(**CATEGORIZER, **overrides))
+
+
+def test_api_starts_with_both_llms_set() -> None:
+    create_app(_settings(**CATEGORIZER, **AGENT))
 
 
 def test_agent_query_limits_default_to_contract_values() -> None:

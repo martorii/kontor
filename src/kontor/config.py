@@ -27,7 +27,7 @@ class Settings(BaseSettings):
     agent_statement_timeout_seconds: float = Field(default=10.0, gt=0)
     agent_max_rows: int = Field(default=500, ge=1)
     # The agent's own LM Studio model (CONTRACT §16.8); no fallback to the categorizer's.
-    # Required once the agent is wired into the API (Step 28).
+    # Required by the API (see require_agent_llm).
     agent_llm_base_url: str = ""
     agent_llm_model: str = ""
     agent_llm_api_key: str = "lm-studio"
@@ -39,13 +39,20 @@ class Settings(BaseSettings):
 
     def require_categorizer_llm(self) -> None:
         """Raise ConfigurationError unless the categorizer's LM Studio URL and model are set."""
-        missing = [
-            name
-            for name, value in (
-                ("CATEGORIZER_LLM_BASE_URL", self.categorizer_llm_base_url),
-                ("CATEGORIZER_LLM_MODEL", self.categorizer_llm_model),
-            )
-            if not value.strip()
-        ]
-        if missing:
-            raise ConfigurationError(f"{' and '.join(missing)} must be set (see .env.example).")
+        _require(
+            ("CATEGORIZER_LLM_BASE_URL", self.categorizer_llm_base_url),
+            ("CATEGORIZER_LLM_MODEL", self.categorizer_llm_model),
+        )
+
+    def require_agent_llm(self) -> None:
+        """Raise ConfigurationError unless the agent's LM Studio URL and model are set."""
+        _require(
+            ("AGENT_LLM_BASE_URL", self.agent_llm_base_url),
+            ("AGENT_LLM_MODEL", self.agent_llm_model),
+        )
+
+
+def _require(*settings: tuple[str, str]) -> None:
+    missing = [name for name, value in settings if not value.strip()]
+    if missing:
+        raise ConfigurationError(f"{' and '.join(missing)} must be set (see .env.example).")

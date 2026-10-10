@@ -40,6 +40,7 @@ Edit `.env`:
 - `DATABASE_URL`: only used for runs on the host (tests, Alembic). Keep the password in sync.
 - `CATEGORIZER_LLM_MODEL`: the model id from step 2.
 - `CATEGORIZER_LLM_BASE_URL`: where the containers reach LM Studio. The example value, `http://host.docker.internal:1234/v1`, is right unless you changed LM Studio's port. The API refuses to start if either of these two is missing.
+- `AGENT_LLM_MODEL` and `AGENT_LLM_BASE_URL`: the model the text-to-SQL agent uses, and where it is served. Like the categorizer's, both are required. A model tuned for code writes better SQL than a small chat model; it can be a different model in the same LM Studio.
 - `API_PORT`, `UI_PORT`: change only if the defaults clash.
 
 ### 4. Create your rules

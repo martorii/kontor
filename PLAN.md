@@ -112,11 +112,11 @@ v1 (Steps 01–22) is complete. Its plan lives in the git history of this file.
   - An evicted conversation starts fresh.
 
 ### Step 28 — Agent API
-- [ ] **Scope**
+- [x] **Scope**
   - `POST /agent/ask` takes `{question, conversation_id?}` and returns:
     - `conversation_id`, `status` (`answered` | `gave_up`)
     - `answer`, `sql`, `columns`, `rows`, `truncated`
-    - `chart`, `attempts`
+    - `chart`, `attempts`, `last_error`
   - `DELETE /agent/conversations/{id}`
   - error mapping:
     - LM Studio unreachable or timed out → 503
