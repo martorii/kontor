@@ -32,6 +32,8 @@ class ApiClient:
     base_url: str = DEFAULT_API_URL
     timeout: float = 300.0
     upload_timeout: float = 1800.0  # an upload runs the LLM step synchronously (CONTRACT §8.2)
+    # The agent may make three SQL attempts plus a summary, each up to its LLM timeout.
+    agent_timeout: float = 600.0
     transport: httpx.BaseTransport | None = None
 
     @classmethod
@@ -53,6 +55,8 @@ class ApiClient:
             raise ApiUnreachableError(f"cannot reach the API at {self.base_url}") from exc
         if response.is_error:
             raise ApiError(response.status_code, _detail(response))
+        if response.status_code == 204:
+            return None
         return response.json()
 
     def upload_import(self, file_name: str, content: bytes) -> dict[str, Any]:
@@ -137,6 +141,19 @@ class ApiClient:
             account_ids=account_ids,
             limit=limit,
         )
+
+    def ask(self, question: str, conversation_id: str | None) -> dict[str, Any]:
+        """Ask the text-to-SQL agent (CONTRACT §16). None starts a new conversation."""
+        body: dict[str, str] = {"question": question}
+        if conversation_id is not None:
+            body["conversation_id"] = conversation_id
+        result: dict[str, Any] = self._request(
+            "POST", "/agent/ask", json=body, timeout=self.agent_timeout
+        )
+        return result
+
+    def forget_conversation(self, conversation_id: str) -> None:
+        self._request("DELETE", f"/agent/conversations/{conversation_id}")
 
 
 def _detail(response: httpx.Response) -> str:
