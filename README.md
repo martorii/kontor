@@ -88,7 +88,7 @@ Manual categorizations always win: neither the rules nor the LLM overwrite them.
 
 ```bash
 make deploy                 # pull the pinned images and restart
-make deploy-main-locally      # git pull main, then make deploy
+make deploy-main-locally      # git pull main, then build from source and restart
 make rollback TAG=vX.Y.Z    # pin a previous release
 ```
 
