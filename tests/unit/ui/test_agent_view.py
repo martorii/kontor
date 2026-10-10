@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from agent_view import chart_data
+from agent_view import chart_data, matched_no_data
 
 
 def response(chart: dict[str, Any], rows: list[list[Any]]) -> dict[str, Any]:
@@ -61,3 +61,26 @@ def test_only_nulls_give_none() -> None:
     rows = [["2026-01", None, "a"]]
 
     assert chart_data(response({"type": "bar", "x": "month", "y": "spent"}, rows)) is None
+
+
+def answered(rows: list[list[Any]]) -> dict[str, Any]:
+    return {"status": "answered", "columns": ["avg"], "rows": rows}
+
+
+def test_no_rows_matched_no_data() -> None:
+    assert matched_no_data(answered([])) is True
+
+
+def test_only_nulls_matched_no_data() -> None:
+    """AVG over zero matching rows returns one row holding NULL."""
+    assert matched_no_data(answered([[None]])) is True
+    assert matched_no_data(answered([[None], [None]])) is True
+
+
+def test_any_value_is_data() -> None:
+    assert matched_no_data(answered([[None], ["12.50"]])) is False
+    assert matched_no_data(answered([[0]])) is False
+
+
+def test_gave_up_is_not_an_empty_result() -> None:
+    assert matched_no_data({"status": "gave_up", "columns": [], "rows": []}) is False

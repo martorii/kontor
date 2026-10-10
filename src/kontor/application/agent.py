@@ -17,7 +17,15 @@ from langgraph.graph.state import CompiledStateGraph
 from kontor.application.agent_context import prompt_hash, render_schema
 from kontor.application.agent_conversations import ConversationStore
 from kontor.application.sql_validator import validate_query
-from kontor.domain.agent import NO_CHART, AgentAnswer, ChartSpec, FailedAttempt, Summary, Turn
+from kontor.domain.agent import (
+    NO_CHART,
+    AgentAnswer,
+    AttemptRecord,
+    ChartSpec,
+    FailedAttempt,
+    Summary,
+    Turn,
+)
 from kontor.domain.errors import (
     ConversationNotFoundError,
     LLMInvalidOutputError,
@@ -100,6 +108,11 @@ class AgentGraph:
         final = self._graph.invoke(initial, {"recursion_limit": 4 * self._max_attempts + 5})
         summary = final["summary"]
         result = final["result"]
+        # Each attempt fails at most once, so the failures are attempts 1..n in order.
+        trace = tuple(
+            AttemptRecord(number, failed.sql, failed.error, None)
+            for number, failed in enumerate(final["failed"], start=1)
+        )
         if summary is None or result is None:
             last = final["failed"][-1]
             log.info("agent_gave_up", attempts=final["attempts"], error=last.error)
@@ -111,6 +124,7 @@ class AgentGraph:
                 chart=NO_CHART,
                 attempts=final["attempts"],
                 last_error=last.error,
+                trace=trace,
             )
         return AgentAnswer(
             status="answered",
@@ -119,6 +133,10 @@ class AgentGraph:
             result=result,
             chart=summary.chart,
             attempts=final["attempts"],
+            trace=(
+                *trace,
+                AttemptRecord(final["attempts"], final["sql"], None, len(result.rows)),
+            ),
         )
 
     def _build(self) -> CompiledStateGraph[_State, None, _State, _State]:

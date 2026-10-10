@@ -3,7 +3,7 @@ from typing import Any  # Any: JSON bodies are untyped by nature
 
 import streamlit as st
 
-from agent_view import chart_data
+from agent_view import chart_data, matched_no_data
 from api_client import ApiClient, ApiError, ApiTimeoutError, ApiUnreachableError
 
 api = ApiClient.from_env()
@@ -25,17 +25,40 @@ def new_conversation() -> None:
     st.session_state[MESSAGES] = []
 
 
+def render_details(response: dict[str, Any]) -> None:
+    """Every attempt: its SQL, and why it failed or how many rows it returned."""
+    trace = response.get("trace") or []
+    label = "Details: 1 attempt" if len(trace) == 1 else f"Details: {len(trace)} attempts"
+    with st.expander(label):
+        for record in trace:
+            if record["error"] is not None:
+                st.markdown(f"**Attempt {record['attempt']}** failed")
+                st.caption(record["error"])
+            else:
+                rows = record["rows"]
+                st.markdown(
+                    f"**Attempt {record['attempt']}** returned {rows} row{'' if rows == 1 else 's'}"
+                )
+            if record["sql"]:
+                st.code(record["sql"], language="sql")
+            else:
+                st.caption("No usable SQL in the model's output.")
+
+
 def render_answer(response: dict[str, Any]) -> None:
     if response["status"] == "gave_up":
         st.warning(response["answer"])
         if response["last_error"]:
             st.caption(f"Last error: {response['last_error']}")
-        if response["sql"]:
-            with st.expander("Last SQL tried"):
-                st.code(response["sql"], language="sql")
+        render_details(response)
         return
 
     st.markdown(response["answer"])
+    if matched_no_data(response):
+        st.info(
+            "The query ran but matched no data. Its filters may not match your categories or "
+            "merchants: check the SQL under Details."
+        )
     if response["columns"]:
         st.dataframe(
             [dict(zip(response["columns"], row, strict=True)) for row in response["rows"]],
@@ -50,9 +73,7 @@ def render_answer(response: dict[str, Any]) -> None:
             st.line_chart(data, x=x, y=y)
         else:
             st.bar_chart(data, x=x, y=y)
-    with st.expander("SQL"):
-        st.code(response["sql"], language="sql")
-    st.caption(f"Attempts: {response['attempts']}")
+    render_details(response)
 
 
 st.title("Ask")

@@ -46,3 +46,15 @@ def _number(value: object) -> float | None:
         except InvalidOperation:
             return None
     return None
+
+
+def matched_no_data(response: dict[str, Any]) -> bool:
+    """True when an answered query returned no rows, or rows that hold only NULLs.
+
+    An aggregate over zero matching rows (AVG, SUM) returns one row of NULLs, which looks like
+    a result but means the filters matched nothing.
+    """
+    if response.get("status") != "answered":
+        return False
+    rows = response.get("rows") or []
+    return all(value is None for row in rows for value in row)
