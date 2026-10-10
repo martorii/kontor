@@ -8,9 +8,7 @@ from kontor.domain.reports import (
     CategorySpendingRow,
     CategoryTotal,
     ExplorerPage,
-    IncomeExpenses,
     MerchantTotal,
-    MonthIncomeExpenses,
     MonthlyOverview,
     SubcategoryTotal,
     TopMerchants,
@@ -127,38 +125,6 @@ class ReportService:
             change=total - previous_total,
             includes_uncategorized=any(r.uncategorized for r in [*current, *previous]),
             categories=tuple(categories),
-        )
-
-    def income_expenses(self, year: int, account_id: int | None) -> IncomeExpenses:
-        with self._uow_factory() as uow:
-            rows = uow.reports.income_expenses(year, account_id)
-        currency = _currency(rows)
-        by_month = {row.month: row for row in rows}
-        months = []
-        for month in range(1, 13):
-            row = by_month.get(month)
-            income = row.income if row else ZERO
-            expenses = row.expenses if row else ZERO
-            months.append(
-                MonthIncomeExpenses(
-                    month=month,
-                    income=income,
-                    expenses=expenses,
-                    net=income - expenses,
-                    savings_rate=_ratio(income - expenses, income),
-                )
-            )
-        income = sum((m.income for m in months), ZERO)
-        expenses = sum((m.expenses for m in months), ZERO)
-        return IncomeExpenses(
-            year=year,
-            currency=currency,
-            includes_uncategorized=any(r.uncategorized_count for r in rows),
-            income=income,
-            expenses=expenses,
-            net=income - expenses,
-            savings_rate=_ratio(income - expenses, income),
-            months=tuple(months),
         )
 
     def top_merchants(

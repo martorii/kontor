@@ -77,7 +77,6 @@ Uploading the same file twice is safe: duplicates are detected and skipped. A ne
 |---|---|
 | Monthly overview | Spending per category for a month; open a category to see its transactions and change a category |
 | Year comparison | A year against the previous one, per category |
-| Income vs. expenses | Income, expenses, net and savings rate per month |
 | Top merchants | Biggest merchants for a year or a month |
 | Review | Uncategorized transactions with the LLM's suggestions; assign a category in one click; re-run the rules with a dry-run preview |
 | Transaction explorer | Filter all transactions and relabel them |

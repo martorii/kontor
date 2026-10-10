@@ -21,7 +21,6 @@ from kontor.domain.reports import (
     CategorySpendingRow,
     ExplorerPage,
     ExplorerTransaction,
-    IncomeExpensesRow,
     MerchantRow,
     TransactionFilter,
 )
@@ -534,18 +533,6 @@ class SqlReportRepository:
             {"year": year, **params},
         )
         return [CategorySpendingRow(**row._mapping) for row in result]
-
-    def income_expenses(self, year: int, account_id: int | None) -> list[IncomeExpensesRow]:
-        where, params = _view_filters(None, account_id)
-        result = self._session.execute(
-            text(
-                "SELECT currency, month, SUM(income) AS income, SUM(expenses) AS expenses, "
-                "SUM(uncategorized_count)::int AS uncategorized_count "
-                f"FROM v_monthly_income_expenses WHERE {where} GROUP BY currency, month"
-            ),
-            {"year": year, **params},
-        )
-        return [IncomeExpensesRow(**row._mapping) for row in result]
 
     def top_merchants(
         self, year: int, month: int | None, account_id: int | None, limit: int

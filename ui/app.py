@@ -6,7 +6,6 @@ navigation = st.navigation(
     [
         st.Page("pages/monthly.py", title="Monthly overview", icon="📅", default=True),
         st.Page("pages/year.py", title="Year comparison", icon="📊"),
-        st.Page("pages/income_expenses.py", title="Income vs. expenses", icon="💰"),
         st.Page("pages/merchants.py", title="Top merchants", icon="🏪"),
         st.Page("pages/review.py", title="Review", icon="📝"),
         st.Page("pages/explorer.py", title="Transaction explorer", icon="🔎"),
