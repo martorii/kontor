@@ -1,4 +1,5 @@
 import json
+from datetime import date
 
 import httpx2 as httpx
 import pytest
@@ -95,10 +96,23 @@ def test_report_sends_only_the_given_parameters() -> None:
         return httpx.Response(200, json={"year": 2026})
 
     client = client_with(httpx.MockTransport(handler))
-    client.top_merchants_report(2026, None, 3, 5)
+    client.top_merchants_report(date(2026, 1, 1), date(2026, 3, 31), [], 5)
 
     assert seen["path"] == "/reports/top-merchants"
-    assert seen["query"] == {"year": "2026", "account_id": "3", "limit": "5"}
+    assert seen["query"] == {"date_from": "2026-01-01", "date_to": "2026-03-31", "limit": "5"}
+
+
+def test_top_merchants_repeats_the_account_parameter() -> None:
+    seen: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["accounts"] = request.url.params.get_list("account_ids")
+        return httpx.Response(200, json={})
+
+    client = client_with(httpx.MockTransport(handler))
+    client.top_merchants_report(date(2026, 1, 1), date(2026, 3, 31), [3, 4], 5)
+
+    assert seen["accounts"] == ["3", "4"]
 
 
 def test_set_category_puts_the_slug_for_the_transaction() -> None:

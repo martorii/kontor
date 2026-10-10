@@ -2,6 +2,7 @@
 
 import os
 from dataclasses import dataclass
+from datetime import date
 from typing import Any  # Any: JSON bodies are untyped by nature
 
 import httpx2 as httpx
@@ -111,9 +112,9 @@ class ApiClient:
         )
         return result
 
-    def report(self, name: str, **params: int | None) -> dict[str, Any]:
-        """Fetch /reports/<name>. Parameters left as None are not sent."""
-        query = {key: value for key, value in params.items() if value is not None}
+    def report(self, name: str, **params: int | str | list[int] | None) -> dict[str, Any]:
+        """Fetch /reports/<name>. Parameters left as None or empty are not sent."""
+        query = {key: value for key, value in params.items() if value not in (None, [])}
         result: dict[str, Any] = self._request("GET", f"/reports/{name}", params=query)
         return result
 
@@ -123,11 +124,18 @@ class ApiClient:
     def year_report(self, year: int, account_id: int | None) -> dict[str, Any]:
         return self.report("year", year=year, account_id=account_id)
 
+    def date_bounds(self, account_ids: list[int]) -> dict[str, Any]:
+        return self.report("date-bounds", account_ids=account_ids)
+
     def top_merchants_report(
-        self, year: int, month: int | None, account_id: int | None, limit: int
+        self, date_from: date, date_to: date, account_ids: list[int], limit: int
     ) -> dict[str, Any]:
         return self.report(
-            "top-merchants", year=year, month=month, account_id=account_id, limit=limit
+            "top-merchants",
+            date_from=date_from.isoformat(),
+            date_to=date_to.isoformat(),
+            account_ids=account_ids,
+            limit=limit,
         )
 
 
