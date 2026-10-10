@@ -1,0 +1,221 @@
+# Golden set for `make eval-agent` (CONTRACT §16.9). Synthetic data only: see
+# src/kontor/agent_eval_seed.py. The category tree is config/rules.example.yaml.
+#
+# Each item: a question, the reference SQL whose result counts as correct, and `ordered: true`
+# when row order matters. Results are compared by value (column names ignored, numbers rounded
+# to cents). Relative dates use current_date, like the seed data, so they agree on any day.
+#
+# Shorthands used below:
+#   last month: booking_date >= date_trunc('month', current_date) - interval '1 month'
+#               AND booking_date < date_trunc('month', current_date)
+#   this year:  booking_date >= date_trunc('year', current_date)
+
+items:
+  - id: groceries-last-month
+    question: How much did I spend on groceries last month?
+    reference_sql: |
+      SELECT SUM(-amount) FROM v_flows
+      WHERE sub_slug = 'food.groceries'
+        AND booking_date >= date_trunc('month', current_date) - interval '1 month'
+        AND booking_date < date_trunc('month', current_date)
+
+  - id: groceries-monthly-average
+    question: What was my average monthly spending on groceries over the last 6 complete months?
+    reference_sql: |
+      SELECT AVG(spent) FROM (
+        SELECT date_trunc('month', booking_date), SUM(-amount) AS spent FROM v_flows
+        WHERE sub_slug = 'food.groceries'
+          AND booking_date >= date_trunc('month', current_date) - interval '6 months'
+          AND booking_date < date_trunc('month', current_date)
+        GROUP BY 1
+      ) AS monthly
+
+  - id: total-spending-last-month
+    question: How much did I spend in total last month?
+    reference_sql: |
+      SELECT SUM(-amount) FROM v_flows
+      WHERE flow = 'expense'
+        AND booking_date >= date_trunc('month', current_date) - interval '1 month'
+        AND booking_date < date_trunc('month', current_date)
+
+  - id: top-merchants-this-year
+    question: List the five merchants I spent the most at this year, with the amount, highest first.
+    ordered: true
+    reference_sql: |
+      SELECT counterparty_normalized, SUM(-amount) AS spent FROM v_flows
+      WHERE flow = 'expense' AND booking_date >= date_trunc('year', current_date)
+      GROUP BY counterparty_normalized
+      ORDER BY spent DESC
+      LIMIT 5
+
+  - id: uncategorized-count
+    question: How many of my transactions are uncategorized?
+    reference_sql: |
+      SELECT COUNT(*) FROM transactions WHERE category_slug IS NULL
+
+  - id: income-last-month
+    question: What was my total income last month?
+    reference_sql: |
+      SELECT SUM(amount) FROM v_flows
+      WHERE flow = 'income'
+        AND booking_date >= date_trunc('month', current_date) - interval '1 month'
+        AND booking_date < date_trunc('month', current_date)
+
+  - id: spending-by-top-category-last-month
+    question: How much did I spend per top-level category last month? Give the category name and the amount.
+    reference_sql: |
+      SELECT top_name, SUM(-amount) FROM v_flows
+      WHERE flow = 'expense'
+        AND booking_date >= date_trunc('month', current_date) - interval '1 month'
+        AND booking_date < date_trunc('month', current_date)
+      GROUP BY top_name
+
+  - id: rent-this-year
+    question: How much rent have I paid this year?
+    reference_sql: |
+      SELECT SUM(-amount) FROM v_flows
+      WHERE sub_slug = 'housing.rent' AND booking_date >= date_trunc('year', current_date)
+
+  - id: spending-per-month-this-year
+    question: Show my total spending for each month of this year, as the month number and the amount, in month order.
+    ordered: true
+    reference_sql: |
+      SELECT month, SUM(-amount) FROM v_flows
+      WHERE flow = 'expense' AND year = EXTRACT(YEAR FROM current_date)
+      GROUP BY month
+      ORDER BY month
+
+  - id: merchant-last-month
+    question: How much did I spend at Frischmarkt last month?
+    reference_sql: |
+      SELECT SUM(-amount) FROM v_flows
+      WHERE counterparty_normalized = 'FRISCHMARKT'
+        AND booking_date >= date_trunc('month', current_date) - interval '1 month'
+        AND booking_date < date_trunc('month', current_date)
+
+  - id: coffee-count-last-month
+    question: How many times did I buy coffee or bakery items last month?
+    reference_sql: |
+      SELECT COUNT(*) FROM v_flows
+      WHERE sub_slug = 'food.coffee'
+        AND booking_date >= date_trunc('month', current_date) - interval '1 month'
+        AND booking_date < date_trunc('month', current_date)
+
+  - id: largest-expense-last-month
+    question: What was the amount of my largest single expense last month?
+    reference_sql: |
+      SELECT MAX(-amount) FROM v_flows
+      WHERE flow = 'expense'
+        AND booking_date >= date_trunc('month', current_date) - interval '1 month'
+        AND booking_date < date_trunc('month', current_date)
+
+  - id: restaurants-vs-groceries-last-month
+    question: Compare my spending on restaurants and on groceries last month. Give each category name with its amount.
+    reference_sql: |
+      SELECT sub_name, SUM(-amount) FROM v_flows
+      WHERE sub_slug IN ('food.restaurants', 'food.groceries')
+        AND booking_date >= date_trunc('month', current_date) - interval '1 month'
+        AND booking_date < date_trunc('month', current_date)
+      GROUP BY sub_name
+
+  - id: net-last-month
+    question: What was my income minus my spending last month?
+    reference_sql: |
+      SELECT SUM(amount) FROM v_flows
+      WHERE flow IN ('income', 'expense')
+        AND booking_date >= date_trunc('month', current_date) - interval '1 month'
+        AND booking_date < date_trunc('month', current_date)
+
+  - id: internal-transfers-this-year
+    question: How much money did I move from one of my own accounts to the other this year?
+    reference_sql: |
+      SELECT SUM(-amount) FROM v_flows
+      WHERE sub_slug = 'transfer.internal' AND amount < 0
+        AND booking_date >= date_trunc('year', current_date)
+
+  - id: savings-this-year
+    question: How much did I put into savings this year?
+    reference_sql: |
+      SELECT SUM(-amount) FROM v_flows
+      WHERE sub_slug = 'savings.deposits' AND booking_date >= date_trunc('year', current_date)
+
+  - id: joint-account-spending-last-month
+    question: How much did I spend from the Gemeinschaftskonto last month?
+    reference_sql: |
+      SELECT SUM(-f.amount) FROM v_flows AS f
+      JOIN accounts AS a ON a.id = f.account_id
+      WHERE a.name = 'Gemeinschaftskonto' AND f.flow = 'expense'
+        AND f.booking_date >= date_trunc('month', current_date) - interval '1 month'
+        AND f.booking_date < date_trunc('month', current_date)
+
+  - id: clothing-refunds-this-year
+    question: How much money did I get back as clothing refunds this year?
+    reference_sql: |
+      SELECT SUM(amount) FROM v_flows
+      WHERE sub_slug = 'shopping.clothing' AND amount > 0
+        AND booking_date >= date_trunc('year', current_date)
+
+  - id: clothing-net-this-year
+    question: What did I spend on clothing this year, after refunds?
+    reference_sql: |
+      SELECT SUM(-amount) FROM v_flows
+      WHERE sub_slug = 'shopping.clothing' AND booking_date >= date_trunc('year', current_date)
+
+  - id: fuel-last-three-months
+    question: How much did I spend on fuel in the last 3 complete months?
+    reference_sql: |
+      SELECT SUM(-amount) FROM v_flows
+      WHERE sub_slug = 'transport.fuel'
+        AND booking_date >= date_trunc('month', current_date) - interval '3 months'
+        AND booking_date < date_trunc('month', current_date)
+
+  - id: average-grocery-purchase-last-month
+    question: What was my average grocery purchase amount last month?
+    reference_sql: |
+      SELECT AVG(-amount) FROM v_flows
+      WHERE sub_slug = 'food.groceries'
+        AND booking_date >= date_trunc('month', current_date) - interval '1 month'
+        AND booking_date < date_trunc('month', current_date)
+
+  - id: grocery-stores-this-year
+    question: At how many different grocery stores did I shop this year?
+    reference_sql: |
+      SELECT COUNT(DISTINCT counterparty_normalized) FROM v_flows
+      WHERE sub_slug = 'food.groceries' AND booking_date >= date_trunc('year', current_date)
+
+  - id: top-grocery-month-this-year
+    question: In which month of this year did I spend the most on groceries? Answer with the month number.
+    reference_sql: |
+      SELECT month FROM v_flows
+      WHERE sub_slug = 'food.groceries' AND year = EXTRACT(YEAR FROM current_date)
+      GROUP BY month
+      ORDER BY SUM(-amount) DESC
+      LIMIT 1
+
+  - id: kids-last-month
+    question: How much did I spend on my kids last month, across all kids categories?
+    reference_sql: |
+      SELECT SUM(-amount) FROM v_flows
+      WHERE top_slug = 'kids'
+        AND booking_date >= date_trunc('month', current_date) - interval '1 month'
+        AND booking_date < date_trunc('month', current_date)
+
+  - id: cash-this-year
+    question: How much cash did I withdraw this year?
+    reference_sql: |
+      SELECT SUM(-amount) FROM v_flows
+      WHERE sub_slug = 'cash.withdrawals' AND booking_date >= date_trunc('year', current_date)
+
+  - id: llm-categorized-last-month
+    question: How many of last month's transactions were categorized by the LLM?
+    reference_sql: |
+      SELECT COUNT(*) FROM transactions
+      WHERE category_source = 'llm'
+        AND booking_date >= date_trunc('month', current_date) - interval '1 month'
+        AND booking_date < date_trunc('month', current_date)
+
+  - id: public-transport-this-year
+    question: What did I spend on public transport this year?
+    reference_sql: |
+      SELECT SUM(-amount) FROM v_flows
+      WHERE sub_slug = 'transport.public' AND booking_date >= date_trunc('year', current_date)

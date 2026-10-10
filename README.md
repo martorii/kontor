@@ -106,6 +106,23 @@ Your data lives in the Docker volume `kontor_pgdata` and survives redeploys.
 
 `make eval-export` writes your manual categorizations to `eval_export.jsonl`; `make eval` runs them through the LLM and writes a JSON result file to `eval_results/`. Both are gitignored. Run them on the host with `DATABASE_URL` and `CATEGORIZER_LLM_BASE_URL=http://localhost:1234/v1` pointing at reachable services. The compose Postgres is not published, so you can also run the export inside the container: `docker compose exec api python -m kontor.eval_cli export`.
 
+## Evaluating the agent
+
+`make eval-agent` asks the agent every question in `tests/agent_eval/golden.yaml` and compares each result with the result of the question's reference SQL. It runs on synthetic data in a throwaway Postgres container, which it removes afterwards, so your real data is never touched. It needs Docker and LM Studio with your agent model. On the host, point it at LM Studio on localhost:
+
+```bash
+AGENT_LLM_BASE_URL=http://localhost:1234/v1 make eval-agent
+```
+
+It prints one line per question and writes `eval_results/agent-<timestamp>.json` (gitignored) with the metrics and, for every question, the SQL, the attempts and why it failed. The metrics are:
+
+- **execution accuracy**: the share of questions whose result matches the reference result
+- **validity rate** and **give-up rate**: the share of questions that got a working query, and the share that did not
+- **empty-result rate**: the share of questions answered with no data, usually a filter on a value that does not exist
+- **average attempts** and **average latency**
+
+The file also records the model name and the prompt hash. Compare runs before and after you change the model or the prompt.
+
 ## Development
 
 Prerequisites: [uv](https://docs.astral.sh/uv/) and [gitleaks](https://github.com/gitleaks/gitleaks) (`brew install gitleaks`).

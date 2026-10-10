@@ -1,4 +1,4 @@
-.PHONY: lint format format-check typecheck test test-llm migrate-check deploy deploy-main-locally rollback reset-db eval eval-export
+.PHONY: lint format format-check typecheck test test-llm migrate-check deploy deploy-main-locally rollback reset-db eval eval-export eval-agent
 
 lint:
 	uv run ruff check .
@@ -44,6 +44,12 @@ eval-export:
 # Needs LM Studio (CATEGORIZER_LLM_BASE_URL, CATEGORIZER_LLM_MODEL in .env) and config/rules.yaml.
 eval:
 	uv run python -m kontor.eval_cli run
+
+# Run the agent's golden set (tests/agent_eval/golden.yaml) on synthetic data in a throwaway
+# Postgres container and write eval_results/agent-<timestamp>.json. Needs Docker and LM Studio
+# (AGENT_LLM_MODEL in .env; on the host, AGENT_LLM_BASE_URL=http://localhost:1234/v1).
+eval-agent:
+	./scripts/eval-agent.sh
 
 # Pin a previous release: make rollback TAG=vX.Y.Z
 rollback:
