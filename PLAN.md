@@ -57,17 +57,19 @@ v1 (Steps 01–22) is complete. Its plan lives in the git history of this file.
 
 ### Step 26 — Schema context
 - [ ] **Scope**
-  - at startup, introspect `information_schema` for the relations and columns `kontor_agent` can read; this list also becomes the validator allowlist
-  - the committed `config/agent_notes.md` holds the semantics, and it contains no real data:
+  - a `SchemaIntrospector` port with a Postgres adapter, listing the relations, columns (with Postgres types) and single-column foreign keys that `kontor_agent` can `SELECT`
+  - `SchemaInfo.allowed_relations` is the validator allowlist
+  - the committed notes `src/kontor/agent_notes.md` hold the semantics, contain no real data, and ship inside the package:
     - negative amounts are outflows
     - the flow and refund rules from §11.1a
     - prefer `v_flows` and the report views for spending
     - `counterparty_normalized` is the merchant
     - `category_source` values
-  - a rendered schema prompt, plus a prompt hash: SHA-256 over the system prompt, the notes, and the schema text
+  - a rendered schema text, plus a prompt hash: SHA-256 over the system prompt, the notes, and the schema text
+  - calling the introspector at startup is wired in Step 28
 - **Pass gate**
-  - An integration test: the context lists the `v_flows` columns with their types and leaves out `alembic_version`.
-  - A unit test: the notes are included in the prompt, and the hash changes when they change.
+  - An integration test: the introspected schema lists the `v_flows` columns with their types, includes the foreign keys, and leaves out `alembic_version`. Its allowlist drives `validate_query`.
+  - A unit test: the notes load, the rendering is stable, and the hash changes when any of its parts changes.
 
 ## Phase G — The agent
 

@@ -217,7 +217,7 @@ None for v1. Decided since the first draft: accounts always have an IBAN (§4.2a
   - **Database:** queries run in a `READ ONLY` transaction, under `SET LOCAL ROLE kontor_agent` (a `NOLOGIN` role with `SELECT` only), with a statement timeout (default 10 s) and a row cap (default 500, with a `truncated` flag).
   - **Validation:** before execution, **sqlglot** checks that the SQL is exactly one `SELECT` statement, that it references only allowed relations, and that it calls no denylisted functions.
   - SQL that fails validation is never executed.
-- **16.4** The agent learns the schema by introspecting what `kontor_agent` can read, plus a committed notes file (`config/agent_notes.md`) that explains the semantics (§10.2, §11.1a).
+- **16.4** The agent learns the schema by introspecting what `kontor_agent` can read, plus a committed notes file that explains the semantics (§10.2, §11.1a). The notes ship inside the package (`src/kontor/agent_notes.md`), not in `config/`, because they belong to the code and the image does not contain `config/`.
 - **16.5** Errors: a failed validation or execution goes back to the model with the error message, at most 2 retries. After that, the agent answers with `gave_up` and the last error.
 - **16.6** An answer contains:
   - a natural-language summary
@@ -256,3 +256,4 @@ None for v1. Decided since the first draft: accounts always have an IBAN (§4.2a
 - **2026-10-10** — LLM concurrency default raised from 1 to 4 (§8.6).
 - **2026-10-11** — Top merchants take a date range and several accounts (§11.1, §11.1a, §11.1b); they no longer take a year and month.
 - **2026-10-10** — v2 text-to-SQL agent decided (§16): free SELECT over the schema behind a read-only role and sqlglot validation, multi-turn in-memory conversations, a separate model, LLM-chosen charts, golden-set evaluation.
+- **2026-10-10** — Agent notes live in the package (`src/kontor/agent_notes.md`), not in `config/` (§16.4).
