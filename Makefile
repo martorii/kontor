@@ -1,4 +1,4 @@
-.PHONY: lint format format-check typecheck test test-llm migrate-check deploy rollback reset-db eval eval-export
+.PHONY: lint format format-check typecheck test test-llm migrate-check deploy deploy-main-locally rollback reset-db eval eval-export
 
 lint:
 	uv run ruff check .
@@ -28,6 +28,12 @@ migrate-check:
 deploy:
 	docker compose pull
 	docker compose up -d
+
+# Fast-forward main from origin, then deploy (the pinned tag comes from the pulled compose file / .env).
+deploy-main-locally:
+	@test "$$(git branch --show-current)" = "main" || { echo "switch to main first"; exit 1; }
+	git pull --ff-only origin main
+	$(MAKE) deploy
 
 # Export manual categorizations to the gitignored eval_export.jsonl. Needs DATABASE_URL.
 eval-export:
