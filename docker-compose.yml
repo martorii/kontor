@@ -31,8 +31,6 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       RULES_PATH: /app/config/rules.yaml
-      # LM Studio runs on the host. `localhost` inside the container would be the container.
-      LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:1234/v1}
     extra_hosts:
       - "host.docker.internal:host-gateway" # Linux; Docker Desktop already provides the name
     volumes:

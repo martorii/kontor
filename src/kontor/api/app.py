@@ -74,19 +74,21 @@ def create_app(settings: Settings | None = None, llm_client: LLMClient | None = 
         sync_categories(uow_factory, rules.load().categories)
         yield
 
+    if llm_client is None:
+        settings.require_categorizer_llm()
+        llm_client = LMStudioClient(
+            settings.categorizer_llm_base_url,
+            settings.categorizer_llm_model,
+            settings.categorizer_llm_timeout_seconds,
+            settings.categorizer_llm_api_key,
+        )
     llm_step = LLMCategorizationStep(
         uow_factory,
-        llm_client
-        or LMStudioClient(
-            settings.llm_base_url,
-            settings.llm_model,
-            settings.llm_timeout_seconds,
-            settings.llm_api_key,
-        ),
+        llm_client,
         lambda: rules.current,
-        threshold=settings.llm_confidence_threshold,
-        concurrency=settings.llm_concurrency,
-        batch_size=settings.llm_batch_size,
+        threshold=settings.categorizer_llm_confidence_threshold,
+        concurrency=settings.categorizer_llm_concurrency,
+        batch_size=settings.categorizer_llm_batch_size,
     )
 
     app = FastAPI(title="Kontor", lifespan=lifespan)

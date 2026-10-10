@@ -38,8 +38,9 @@ Edit `.env`:
 
 - `POSTGRES_PASSWORD`: pick your own password.
 - `DATABASE_URL`: only used for runs on the host (tests, Alembic). Keep the password in sync.
-- `LLM_MODEL`: the model id from step 2. Uncomment the line.
-- `LLM_BASE_URL`, `API_PORT`, `UI_PORT`: change only if the defaults clash. The containers reach LM Studio at `http://host.docker.internal:1234/v1` by default.
+- `CATEGORIZER_LLM_MODEL`: the model id from step 2.
+- `CATEGORIZER_LLM_BASE_URL`: where the containers reach LM Studio. The example value, `http://host.docker.internal:1234/v1`, is right unless you changed LM Studio's port. The API refuses to start if either of these two is missing.
+- `API_PORT`, `UI_PORT`: change only if the defaults clash.
 
 ### 4. Create your rules
 
@@ -102,7 +103,7 @@ Your data lives in the Docker volume `kontor_pgdata` and survives redeploys.
 
 ## Evaluating the categorizer
 
-`make eval-export` writes your manual categorizations to `eval_export.jsonl`; `make eval` runs them through the LLM and writes a JSON result file to `eval_results/`. Both are gitignored. Run them on the host with `DATABASE_URL` and `LLM_BASE_URL=http://localhost:1234/v1` pointing at reachable services. The compose Postgres is not published, so you can also run the export inside the container: `docker compose exec api python -m kontor.eval_cli export`.
+`make eval-export` writes your manual categorizations to `eval_export.jsonl`; `make eval` runs them through the LLM and writes a JSON result file to `eval_results/`. Both are gitignored. Run them on the host with `DATABASE_URL` and `CATEGORIZER_LLM_BASE_URL=http://localhost:1234/v1` pointing at reachable services. The compose Postgres is not published, so you can also run the export inside the container: `docker compose exec api python -m kontor.eval_cli export`.
 
 ## Development
 

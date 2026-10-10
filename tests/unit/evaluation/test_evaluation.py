@@ -104,3 +104,20 @@ def test_run_without_an_export_fails_with_a_hint(
 ) -> None:
     assert run(tmp_path / "missing.jsonl", None, Settings()) == 1
     assert "make eval-export" in capsys.readouterr().err
+
+
+def test_run_without_categorizer_llm_fails_with_the_variable_name(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    export = tmp_path / "export.jsonl"
+    record = {
+        "counterparty": "Example Shop",
+        "purpose": "groceries",
+        "amount": "-12.30",
+        "currency": "EUR",
+        "category_slug": "food.groceries",
+    }
+    export.write_text(json.dumps(record) + "\n", encoding="utf-8")
+
+    assert run(export, None, Settings(_env_file=None)) == 1  # type: ignore[call-arg]
+    assert "CATEGORIZER_LLM_BASE_URL" in capsys.readouterr().err

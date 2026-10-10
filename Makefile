@@ -15,7 +15,7 @@ typecheck:
 test:
 	uv run pytest
 
-# Needs LM Studio running locally (LLM_BASE_URL, LLM_MODEL in .env).
+# Needs LM Studio running locally (CATEGORIZER_LLM_BASE_URL, CATEGORIZER_LLM_MODEL in .env).
 test-llm:
 	uv run pytest -m llm
 
@@ -41,7 +41,7 @@ eval-export:
 	uv run python -m kontor.eval_cli export
 
 # Run the labeled set through the real LLM and write eval_results/eval-<timestamp>.json.
-# Needs LM Studio (LLM_BASE_URL, LLM_MODEL in .env) and config/rules.yaml.
+# Needs LM Studio (CATEGORIZER_LLM_BASE_URL, CATEGORIZER_LLM_MODEL in .env) and config/rules.yaml.
 eval:
 	uv run python -m kontor.eval_cli run
 

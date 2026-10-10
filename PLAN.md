@@ -71,14 +71,24 @@ v1 (Steps 01–22) is complete. Its plan lives in the git history of this file.
   - An integration test: the introspected schema lists the `v_flows` columns with their types, includes the foreign keys, and leaves out `alembic_version`. Its allowlist drives `validate_query`.
   - A unit test: the notes load, the rendering is stable, and the hash changes when any of its parts changes.
 
+### Step 26a — Categorizer LLM settings
+- [ ] **Scope**
+  - hard rename of `LLM_*` to `CATEGORIZER_LLM_*`; the old names are no longer read
+  - `CATEGORIZER_LLM_BASE_URL` and `CATEGORIZER_LLM_MODEL` are required: the API and `make eval` refuse to start without them, while Alembic does not need them
+  - `docker-compose.yml` no longer defaults the URL; `.env.example` sets it explicitly
+  - README, Makefile and CONTRACT updated
+- **Pass gate**
+  - Unit tests: the new names are read and the old ones ignored, and a missing URL or model stops the API and `make eval` with a message that names the variable.
+  - Manual: after renaming the variables in `.env`, `make deploy-main-locally` starts and the categorizer is healthy.
+
 ## Phase G — The agent
 
 ### Step 27 — Agent graph
 - [ ] **Scope**
-  - **langgraph** is a new dependency to confirm. The nodes call LM Studio through the existing `openai` client, with no langchain packages.
-  - settings:
-    - `AGENT_LLM_MODEL` (required for the agent)
-    - `AGENT_LLM_BASE_URL`, which defaults to `LLM_BASE_URL`
+  - **langgraph** is a new dependency (confirmed). It pulls in langchain-core and langsmith transitively; our code imports neither, and `LANGSMITH_TRACING=false` is set explicitly. The nodes call LM Studio through the existing `openai` client.
+  - settings, explicit and independent of the categorizer's:
+    - `AGENT_LLM_BASE_URL` and `AGENT_LLM_MODEL`, required: the API refuses to start without them (checked when the agent is wired, Step 28)
+    - `AGENT_LLM_API_KEY`
     - `AGENT_LLM_TIMEOUT_SECONDS`
     - `AGENT_MAX_RETRIES` (default 2)
   - an `AgentLLM` port, with an LM Studio adapter and a scripted fake adapter
@@ -110,7 +120,6 @@ v1 (Steps 01–22) is complete. Its plan lives in the git history of this file.
   - `DELETE /agent/conversations/{id}`
   - error mapping:
     - LM Studio unreachable or timed out → 503
-    - `AGENT_LLM_MODEL` not set → 503 with a clear message
     - an empty question → 422
   - wiring in the app factory
 - **Pass gate** — API tests with the fake LLM cover each status and each error mapping. The rows round-trip `Decimal` values as strings, and no float conversion happens.
