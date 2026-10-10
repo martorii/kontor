@@ -340,3 +340,17 @@ def test_trace_of_a_gave_up_answer_has_every_failure() -> None:
 
     assert [record.attempt for record in answer.trace] == [1, 2, 3]
     assert all(record.error and record.rows is None for record in answer.trace)
+
+
+def test_untokenizable_sql_is_retried_not_raised() -> None:
+    """An unclosed quote makes sqlglot raise TokenError; it must count as a failed attempt."""
+    llm = FakeAgentLLM(
+        sql=["SELECT date_trunc('month', current_date') FROM v_flows", GOOD_SQL],
+        summaries=[Summary("ok", NO_CHART)],
+    )
+
+    _, answer = make_service(llm, FakeExecutor(MONTHLY)).ask("q", None)
+
+    assert answer.status == "answered"
+    assert answer.attempts == 2
+    assert "could not parse the SQL" in llm.sql_calls[1].failed_attempts[0].error
