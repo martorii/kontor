@@ -165,3 +165,22 @@ def test_upload_uses_its_own_longer_timeout() -> None:
     client.upload_import("march.csv", b"a;b")
 
     assert seen["timeout"] == {"connect": 99.0, "read": 99.0, "write": 99.0, "pool": 99.0}
+
+
+def test_run_llm_posts_with_the_dry_run_flag() -> None:
+    seen: dict[str, object] = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen["method"] = request.method
+        seen["path"] = request.url.path
+        seen["query"] = request.url.query
+        return httpx.Response(200, json={"evaluated": 3})
+
+    result = client_with(httpx.MockTransport(handler)).run_llm(dry_run=True)
+
+    assert result == {"evaluated": 3}
+    assert (seen["method"], seen["path"], seen["query"]) == (
+        "POST",
+        "/categorization/llm",
+        b"dry_run=true",
+    )

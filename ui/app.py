@@ -10,6 +10,7 @@ navigation = st.navigation(
         st.Page("pages/review.py", title="Review", icon="📝"),
         st.Page("pages/explorer.py", title="Transaction explorer", icon="🔎"),
         st.Page("pages/upload.py", title="Upload", icon="⬆️"),
+        st.Page("pages/rerun_llm.py", title="Re-run LLM", icon="🤖"),
         st.Page("pages/imports.py", title="Import history", icon="🕘"),
         st.Page("pages/accounts.py", title="Accounts", icon="🏦"),
     ]
