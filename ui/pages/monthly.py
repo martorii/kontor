@@ -39,8 +39,14 @@ st.metric("Total spending", money(report["total"], currency))
 
 categories = report["categories"]
 st.bar_chart(
-    {c["name"]: chart_number(c["total"]) for c in categories},
+    {
+        "Category": [c["name"] for c in categories],
+        "Spent": [chart_number(c["total"]) for c in categories],
+    },
+    x="Category",
+    y="Spent",
     horizontal=True,
+    sort="-Spent",
 )
 
 st.subheader("By category")
