@@ -52,3 +52,11 @@ class InvalidDateRangeError(KontorError):
 
 class MixedCurrenciesError(KontorError):
     """The selected data spans several currencies; select one account."""
+
+
+class QueryTimeoutError(KontorError):
+    """An agent query ran longer than the statement timeout (CONTRACT §16.3)."""
+
+
+class QueryExecutionError(KontorError):
+    """Postgres rejected an agent query. The message is Postgres' own, for the retry prompt."""

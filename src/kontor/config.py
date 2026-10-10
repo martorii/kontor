@@ -18,3 +18,5 @@ class Settings(BaseSettings):
     llm_confidence_threshold: float = 0.95
     llm_concurrency: int = Field(default=4, ge=1)
     llm_batch_size: int = Field(default=10, ge=1)
+    agent_statement_timeout_seconds: float = Field(default=10.0, gt=0)
+    agent_max_rows: int = Field(default=500, ge=1)
