@@ -96,6 +96,12 @@ class ApiClient:
         )
         return result
 
+    def run_llm(self, dry_run: bool = False) -> dict[str, Any]:
+        result: dict[str, Any] = self._request(
+            "POST", "/categorization/llm", params={"dry_run": dry_run}, timeout=self.upload_timeout
+        )
+        return result
+
     def list_categories(self) -> list[dict[str, Any]]:
         result: list[dict[str, Any]] = self._request("GET", "/categories")
         return result
