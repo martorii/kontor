@@ -110,7 +110,7 @@ A decision changes only when the developer explicitly decides so. Every change i
 - **8.3** Parse, deduplicate, rule-categorize, and persist happen in **one database transaction**, which is committed before the LLM step starts. A failure in this phase rolls back the whole file, including an auto-created account. No import record is kept for a failed file, so a corrected file can be uploaded again.
 - **8.4** LLM results are written in small committed batches. An interruption leaves the remaining transactions uncategorized and loses no imported data.
 - **8.5** Before the LLM step, Kontor checks that LM Studio is reachable. If it is not, the step is skipped with one warning log line, and the import still succeeds.
-- **8.6** Each LLM call has a timeout. The number of concurrent LLM calls is configurable and defaults to 1.
+- **8.6** Each LLM call has a timeout. The number of concurrent LLM calls is configurable and defaults to 4.
 - **8.7** The LLM step logs one line per transaction in the `api` container:
   - import ID
   - progress (`n/N`)
@@ -225,3 +225,4 @@ None for v1. Decided since the first draft: accounts always have an IBAN (§4.2a
 - **2026-10-06** — LLM progress endpoint decided (§8.7a): in-memory progress of the running LLM step, for the upload progress bar.
 - **2026-10-08** — LLM default threshold raised to 0.95 (§7.4) because of poor LLM accuracy; answers below it stay unapplied suggestions.
 - **2026-10-10** — Removed the Income vs. expenses report (§11.1, §11.1a): the UI tab, the `/reports/income-expenses` endpoint and the `v_monthly_income_expenses` view.
+- **2026-10-10** — LLM concurrency default raised from 1 to 4 (§8.6).
