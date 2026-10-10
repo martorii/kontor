@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from typing import Protocol
 
-from kontor.domain.agent import FailedAttempt, Summary, Turn
+from kontor.domain.agent import FailedAttempt, SqlDraft, Summary, Turn
 
 
 class AgentLLM(Protocol):
@@ -19,8 +19,8 @@ class AgentLLM(Protocol):
         history: Sequence[Turn],
         context: str,
         failed_attempts: Sequence[FailedAttempt],
-    ) -> str:
-        """One SELECT answering `question`. `context` is the notes plus the schema.
+    ) -> SqlDraft:
+        """One SELECT answering `question`, with a short plan. `context` is what the model knows.
 
         `failed_attempts` are this question's earlier attempts and why they failed.
         Raises LLMUnavailableError, LLMTimeoutError or LLMInvalidOutputError.

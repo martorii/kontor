@@ -51,7 +51,7 @@ def agent() -> LMStudioAgentLLM:
 def test_generates_a_valid_select(agent: LMStudioAgentLLM) -> None:
     context = f"{load_notes()}\n\n# Schema\n\n{render_schema(SCHEMA)}"
 
-    sql = agent.generate_sql("How much did I spend on groceries last month?", [], context, [])
+    draft = agent.generate_sql("How much did I spend on groceries last month?", [], context, [])
 
-    assert sql.lstrip().upper().startswith(("SELECT", "WITH"))
-    validate_query(sql, SCHEMA.allowed_relations)
+    assert draft.sql.lstrip().upper().startswith(("SELECT", "WITH"))
+    validate_query(draft.sql, SCHEMA.allowed_relations)

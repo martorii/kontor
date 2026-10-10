@@ -60,6 +60,7 @@ class _State(TypedDict):
     attempts: int
     failed: tuple[FailedAttempt, ...]
     sql: str | None
+    plan: str | None
     error: str | None
     result: QueryResult | None
     summary: Summary | None
@@ -108,6 +109,7 @@ class AgentGraph:
             "attempts": 0,
             "failed": (),
             "sql": None,
+            "plan": None,
             "error": None,
             "result": None,
             "summary": None,
@@ -118,7 +120,7 @@ class AgentGraph:
         result = final["result"]
         # Each attempt fails at most once, so the failures are attempts 1..n in order.
         trace = tuple(
-            AttemptRecord(number, failed.sql, failed.error, None)
+            AttemptRecord(number, failed.sql, failed.error, None, failed.plan)
             for number, failed in enumerate(final["failed"], start=1)
         )
         if summary is None or result is None:
@@ -143,7 +145,9 @@ class AgentGraph:
             attempts=final["attempts"],
             trace=(
                 *trace,
-                AttemptRecord(final["attempts"], final["sql"], None, len(result.rows)),
+                AttemptRecord(
+                    final["attempts"], final["sql"], None, len(result.rows), final["plan"]
+                ),
             ),
         )
 
@@ -169,24 +173,25 @@ class AgentGraph:
         return route
 
     def _fail(
-        self, state: _State, error: str, *, attempt: int, sql: str | None
+        self, state: _State, error: str, *, attempt: int, sql: str | None, plan: str | None
     ) -> dict[str, object]:
         log.info("agent_attempt_failed", attempt=attempt, error=error)
-        return {"error": error, "failed": (*state["failed"], FailedAttempt(sql, error))}
+        failed = FailedAttempt(sql, error, plan)
+        return {"error": error, "failed": (*state["failed"], failed)}
 
     def _generate_sql(self, state: _State) -> dict[str, object]:
         attempt = state["attempts"] + 1
-        update: dict[str, object] = {"attempts": attempt, "sql": None, "error": None}
+        update: dict[str, object] = {"attempts": attempt, "sql": None, "plan": None, "error": None}
         try:
-            sql = self._llm.generate_sql(
+            draft = self._llm.generate_sql(
                 state["question"], state["history"], state["context"], state["failed"]
             )
         except LLMInvalidOutputError as exc:
             error = f"unusable model output: {exc}"
-            return update | self._fail(state, error, attempt=attempt, sql=None)
+            return update | self._fail(state, error, attempt=attempt, sql=None, plan=None)
         log.info("agent_sql_generated", attempt=attempt)
-        log.debug("agent_sql", attempt=attempt, sql=sql)
-        return update | {"sql": sql}
+        log.debug("agent_sql", attempt=attempt, plan=draft.plan, sql=draft.sql)
+        return update | {"sql": draft.sql, "plan": draft.plan}
 
     def _validate(self, state: _State) -> dict[str, object]:
         assert state["sql"] is not None  # routed here only after SQL was generated
@@ -194,7 +199,9 @@ class AgentGraph:
             validate_query(state["sql"], self._allowed_relations)
         except UnsafeQueryError as exc:
             error = f"rejected by the validator: {exc}"
-            return self._fail(state, error, attempt=state["attempts"], sql=state["sql"])
+            return self._fail(
+                state, error, attempt=state["attempts"], sql=state["sql"], plan=state["plan"]
+            )
         return {}
 
     def _execute(self, state: _State) -> dict[str, object]:
@@ -203,10 +210,14 @@ class AgentGraph:
             result = self._executor.execute(state["sql"])
         except QueryTimeoutError as exc:
             error = f"the query timed out: {exc}"
-            return self._fail(state, error, attempt=state["attempts"], sql=state["sql"])
+            return self._fail(
+                state, error, attempt=state["attempts"], sql=state["sql"], plan=state["plan"]
+            )
         except QueryExecutionError as exc:
             error = f"Postgres error: {exc}"
-            return self._fail(state, error, attempt=state["attempts"], sql=state["sql"])
+            return self._fail(
+                state, error, attempt=state["attempts"], sql=state["sql"], plan=state["plan"]
+            )
         log.info(
             "agent_sql_executed",
             attempt=state["attempts"],

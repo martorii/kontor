@@ -11,7 +11,7 @@ from kontor.application.agent import (
     check_chart,
 )
 from kontor.application.agent_conversations import ConversationStore
-from kontor.domain.agent import NO_CHART, AttemptRecord, ChartSpec, Summary
+from kontor.domain.agent import NO_CHART, AttemptRecord, ChartSpec, SqlDraft, Summary
 from kontor.domain.errors import (
     LLMInvalidOutputError,
     LLMUnavailableError,
@@ -432,3 +432,17 @@ def test_reference_values_stay_out_of_the_prompt_hash() -> None:
     )
 
     assert first.prompt_hash == second.prompt_hash
+
+
+def test_the_plan_reaches_the_trace_for_failed_and_final_attempts() -> None:
+    llm = FakeAgentLLM(
+        sql=[SqlDraft("DELETE FROM v_flows", "bad plan"), SqlDraft(GOOD_SQL, "good plan")],
+        summaries=[Summary("ok", NO_CHART)],
+    )
+
+    _, answer = make_service(llm, FakeExecutor(MONTHLY)).ask("q", None)
+
+    failed, final = answer.trace
+    assert failed.plan == "bad plan"
+    assert final == AttemptRecord(2, GOOD_SQL, None, 2, "good plan")
+    assert llm.sql_calls[1].failed_attempts[0].plan == "bad plan"

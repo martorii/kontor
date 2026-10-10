@@ -7,14 +7,18 @@ from openai import OpenAI
 
 from kontor.adapters.llm.lmstudio_agent import (
     PROMPT_TEXT,
+    SQL_EXAMPLES,
     SQL_SYSTEM_PROMPT,
     LMStudioAgentLLM,
     parse_sql_answer,
     parse_summary_answer,
+    render_examples,
     render_sql_request,
     render_summary_request,
 )
-from kontor.domain.agent import ChartSpec, FailedAttempt, Summary, Turn
+from kontor.agent_eval_cli import DEFAULT_GOLDEN, load_golden
+from kontor.application.sql_validator import validate_query
+from kontor.domain.agent import ChartSpec, FailedAttempt, SqlDraft, Summary, Turn
 from kontor.domain.errors import LLMInvalidOutputError, LLMTimeoutError, LLMUnavailableError
 
 
@@ -49,14 +53,14 @@ def test_generate_sql_sends_the_context_and_parses_the_answer() -> None:
 
     def handler(request: httpx.Request) -> httpx.Response:
         sent.append(json.loads(request.content))
-        return httpx.Response(200, json=completion('{"sql": " SELECT 1 "}'))
+        return httpx.Response(200, json=completion('{"plan": " p ", "sql": " SELECT 1 "}'))
 
-    sql = agent_with(httpx.MockTransport(handler)).generate_sql("q?", [], "CONTEXT", [])
+    draft = agent_with(httpx.MockTransport(handler)).generate_sql("q?", [], "CONTEXT", [])
 
-    assert sql == "SELECT 1"
+    assert draft == SqlDraft("SELECT 1", "p")
     messages = sent[0]["messages"]
     assert isinstance(messages, list)
-    assert messages[0]["content"] == f"{SQL_SYSTEM_PROMPT}\nCONTEXT"
+    assert messages[0]["content"] == f"{SQL_SYSTEM_PROMPT}\n{render_examples()}\n\nCONTEXT"
     assert "Question: q?" in messages[1]["content"]
     assert sent[0]["temperature"] == 0
 
@@ -182,3 +186,24 @@ def test_error_responses_carry_lm_studios_reason(body: dict[str, object], detail
         agent_with(httpx.MockTransport(handler)).generate_sql("q", [], "", [])
 
     assert str(excinfo.value) == detail
+
+
+def test_plan_is_optional_in_the_parsed_answer() -> None:
+    assert parse_sql_answer('{"sql": "SELECT 1"}') == SqlDraft("SELECT 1", None)
+    assert parse_sql_answer('{"plan": "  ", "sql": "SELECT 1"}') == SqlDraft("SELECT 1", None)
+
+
+@pytest.mark.parametrize(("question", "plan", "sql"), SQL_EXAMPLES)
+def test_every_example_passes_the_validator(question: str, plan: str, sql: str) -> None:
+    validate_query(sql, frozenset({"v_flows", "accounts"}))
+    assert plan
+
+
+def test_no_example_is_a_golden_question() -> None:
+    golden = {item.question for item in load_golden(DEFAULT_GOLDEN)}
+
+    assert golden.isdisjoint(question for question, _, _ in SQL_EXAMPLES)
+
+
+def test_prompt_text_includes_the_examples() -> None:
+    assert render_examples() in PROMPT_TEXT

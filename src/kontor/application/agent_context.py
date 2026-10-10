@@ -48,8 +48,9 @@ def render_reference(values: ReferenceValues) -> str:
     lines = [
         "# Categories",
         "",
-        "Filter on these exact values; never guess a category name. Transactions point at a "
-        "subcategory (`sub_slug` in the views); its top-level category is `top_slug`.",
+        "Filter on these exact slugs; never guess a category name. In v_flows and the report "
+        "views, `sub_slug` is the subcategory and `top_slug` its top-level category, so filter "
+        "those columns directly. The categories table has no such columns and needs no join.",
         "",
     ]
     for top in values.categories:

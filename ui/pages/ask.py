@@ -39,6 +39,8 @@ def render_details(response: dict[str, Any]) -> None:
                 st.markdown(
                     f"**Attempt {record['attempt']}** returned {rows} row{'' if rows == 1 else 's'}"
                 )
+            if record.get("plan"):
+                st.caption(f"Plan: {record['plan']}")
             if record["sql"]:
                 st.code(record["sql"], language="sql")
             else:
