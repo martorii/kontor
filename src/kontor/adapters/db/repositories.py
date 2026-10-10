@@ -1,5 +1,6 @@
 from collections import Counter
 from collections.abc import Mapping, Sequence
+from datetime import date
 from decimal import Decimal
 
 from sqlalchemy import func, or_, select, text, update
@@ -19,6 +20,7 @@ from kontor.domain.llm import LLMOutcome
 from kontor.domain.recategorization import Candidate, Change
 from kontor.domain.reports import (
     CategorySpendingRow,
+    DateBounds,
     ExplorerPage,
     ExplorerTransaction,
     MerchantRow,
@@ -535,17 +537,30 @@ class SqlReportRepository:
         return [CategorySpendingRow(**row._mapping) for row in result]
 
     def top_merchants(
-        self, year: int, month: int | None, account_id: int | None, limit: int
+        self, date_from: date, date_to: date, account_ids: Sequence[int] | None, limit: int
     ) -> list[MerchantRow]:
-        where, params = _view_filters(month, account_id)
+        sql = "booking_date BETWEEN :date_from AND :date_to"
+        params: dict[str, object] = {"date_from": date_from, "date_to": date_to, "limit": limit}
+        if account_ids:
+            sql += " AND account_id = ANY(:account_ids)"
+            params["account_ids"] = list(account_ids)
         result = self._session.execute(
             text(
                 "SELECT currency, counterparty_normalized AS merchant, SUM(spent) AS spent, "
                 "SUM(transaction_count)::int AS transaction_count "
-                f"FROM v_merchant_spending WHERE {where} "
+                f"FROM v_merchant_spending WHERE {sql} "
                 "GROUP BY currency, counterparty_normalized "
                 "ORDER BY SUM(spent) DESC, counterparty_normalized LIMIT :limit"
             ),
-            {"year": year, "limit": limit, **params},
+            params,
         )
         return [MerchantRow(**row._mapping) for row in result]
+
+    def date_bounds(self, account_ids: Sequence[int] | None) -> DateBounds | None:
+        statement = select(
+            func.min(models.Transaction.booking_date), func.max(models.Transaction.booking_date)
+        )
+        if account_ids:
+            statement = statement.where(models.Transaction.account_id.in_(list(account_ids)))
+        first, last = self._session.execute(statement).one()
+        return None if first is None else DateBounds(first=first, last=last)

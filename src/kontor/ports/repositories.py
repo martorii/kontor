@@ -1,4 +1,5 @@
 from collections.abc import Mapping, Sequence
+from datetime import date
 from types import TracebackType
 from typing import Protocol, Self
 
@@ -8,6 +9,7 @@ from kontor.domain.llm import LLMOutcome
 from kontor.domain.recategorization import Candidate, Change
 from kontor.domain.reports import (
     CategorySpendingRow,
+    DateBounds,
     ExplorerPage,
     MerchantRow,
     TransactionFilter,
@@ -100,8 +102,12 @@ class ReportRepository(Protocol):
     ) -> list[CategorySpendingRow]: ...
 
     def top_merchants(
-        self, year: int, month: int | None, account_id: int | None, limit: int
+        self, date_from: date, date_to: date, account_ids: Sequence[int] | None, limit: int
     ) -> list[MerchantRow]: ...
+
+    def date_bounds(self, account_ids: Sequence[int] | None) -> DateBounds | None:
+        """First and last booking date, or None if there are no transactions."""
+        ...
 
 
 class CategoryRepository(Protocol):

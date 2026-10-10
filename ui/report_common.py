@@ -76,6 +76,23 @@ def month_select(*, allow_all: bool = False, key: str = "month") -> int | None:
     )
 
 
+def accounts_multiselect(api: ApiClient) -> list[int]:
+    """Account picker. An empty selection means all accounts."""
+    try:
+        accounts = api.list_accounts()
+    except (ApiError, ApiUnreachableError) as exc:
+        st.error(str(exc))
+        st.stop()
+    names = {a["id"]: f"{a['name']} ({a['iban']})" for a in accounts}
+    chosen: list[int] = st.multiselect(
+        "Accounts",
+        list(names),
+        format_func=lambda i: names[i],
+        placeholder="All accounts",
+    )
+    return chosen
+
+
 def provisional_notice(report: dict[str, Any]) -> None:
     if report.get("includes_uncategorized"):
         st.warning("Provisional: uncategorized transactions are counted in these totals.")

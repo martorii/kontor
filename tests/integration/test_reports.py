@@ -125,17 +125,104 @@ def test_top_merchants(make_client: MakeClient) -> None:
     client = make_client(RULES)
     seed(client)
 
-    top = client.get("/reports/top-merchants", params={"year": 2026, "limit": 2}).json()
+    top = client.get(
+        "/reports/top-merchants",
+        params={"date_from": "2026-01-01", "date_to": "2026-12-31", "limit": 2},
+    ).json()
     assert [(m["merchant"], money(m["total"])) for m in top["merchants"]] == [
         ("LANDLORD GMBH", Decimal("500.00")),
         ("REWE MARKT", Decimal("68.00")),
     ]
     assert top["merchants"][1]["transaction_count"] == 4
 
-    april = client.get("/reports/top-merchants", params={"year": 2026, "month": 4}).json()
+    april = client.get(
+        "/reports/top-merchants", params={"date_from": "2026-04-01", "date_to": "2026-04-30"}
+    ).json()
     assert [(m["merchant"], money(m["total"])) for m in april["merchants"]] == [
         ("REWE MARKT", Decimal("40.00"))
     ]
+
+
+def test_top_merchants_default_to_all_available_dates(make_client: MakeClient) -> None:
+    client = make_client(RULES)
+    seed(client)
+
+    bounds = client.get("/reports/date-bounds").json()
+    top = client.get("/reports/top-merchants").json()
+
+    assert bounds == {"first": "2025-03-01", "last": "2026-04-25"}
+    assert (top["date_from"], top["date_to"]) == ("2025-03-01", "2026-04-25")
+    rewe = next(m for m in top["merchants"] if m["merchant"] == "REWE MARKT")
+    assert (money(rewe["total"]), rewe["transaction_count"]) == (Decimal("93.00"), 5)
+
+
+def test_top_merchants_range_can_start_mid_month_and_is_inclusive(
+    make_client: MakeClient,
+) -> None:
+    client = make_client(RULES)
+    seed(client)
+
+    top = client.get(
+        "/reports/top-merchants", params={"date_from": "2026-03-11", "date_to": "2026-03-12"}
+    ).json()
+
+    assert [(m["merchant"], money(m["total"])) for m in top["merchants"]] == [
+        ("REWE MARKT", Decimal("20.50")),
+        ("CAFE CENTRAL", Decimal("5.00")),
+    ]
+
+
+def test_top_merchants_with_one_open_bound(make_client: MakeClient) -> None:
+    client = make_client(RULES)
+    seed(client)
+
+    top = client.get("/reports/top-merchants", params={"date_from": "2026-04-01"}).json()
+
+    assert (top["date_from"], top["date_to"]) == ("2026-04-01", "2026-04-25")
+    assert [m["merchant"] for m in top["merchants"]] == ["REWE MARKT"]
+
+
+def test_top_merchants_rejects_a_reversed_range(make_client: MakeClient) -> None:
+    client = make_client(RULES)
+    seed(client)
+
+    response = client.get(
+        "/reports/top-merchants", params={"date_from": "2026-04-01", "date_to": "2026-03-01"}
+    )
+
+    assert response.status_code == 422
+
+
+def test_top_merchants_without_transactions(make_client: MakeClient) -> None:
+    client = make_client(RULES)
+
+    assert client.get("/reports/date-bounds").json() == {"first": None, "last": None}
+    top = client.get("/reports/top-merchants").json()
+    assert (top["date_from"], top["currency"], top["merchants"]) == (None, None, [])
+
+
+def test_top_merchants_for_several_accounts(make_client: MakeClient) -> None:
+    client = make_client(RULES)
+    seed(client)
+    upload(
+        client,
+        dkb_file([row("10.05.26", "REWE Markt", "-1,00")], iban=OTHER_IBAN),
+        "other.csv",
+    )
+    accounts = {a["iban"]: a["id"] for a in client.get("/accounts").json()}
+    other = accounts[OTHER_IBAN]
+    main = next(i for iban, i in accounts.items() if iban != OTHER_IBAN)
+
+    only_other = client.get("/reports/top-merchants", params={"account_ids": [other]}).json()
+    both = client.get("/reports/top-merchants", params={"account_ids": [main, other]}).json()
+    other_bounds = client.get("/reports/date-bounds", params={"account_ids": [other]}).json()
+
+    assert [(m["merchant"], money(m["total"])) for m in only_other["merchants"]] == [
+        ("REWE MARKT", Decimal("1.00"))
+    ]
+    assert other_bounds == {"first": "2026-05-10", "last": "2026-05-10"}
+    rewe = next(m for m in both["merchants"] if m["merchant"] == "REWE MARKT")
+    assert money(rewe["total"]) == Decimal("94.00")
 
 
 def test_reports_filter_by_account(make_client: MakeClient) -> None:

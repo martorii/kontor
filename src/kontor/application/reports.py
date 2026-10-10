@@ -1,12 +1,14 @@
 from collections import defaultdict
 from collections.abc import Callable, Sequence
+from datetime import date
 from decimal import Decimal
 from typing import Protocol
 
-from kontor.domain.errors import MixedCurrenciesError
+from kontor.domain.errors import InvalidDateRangeError, MixedCurrenciesError
 from kontor.domain.reports import (
     CategorySpendingRow,
     CategoryTotal,
+    DateBounds,
     ExplorerPage,
     MerchantTotal,
     MonthlyOverview,
@@ -127,14 +129,30 @@ class ReportService:
             categories=tuple(categories),
         )
 
-    def top_merchants(
-        self, year: int, month: int | None, account_id: int | None, limit: int
-    ) -> TopMerchants:
+    def date_bounds(self, account_ids: Sequence[int] | None) -> DateBounds | None:
         with self._uow_factory() as uow:
-            rows = uow.reports.top_merchants(year, month, account_id, limit)
+            return uow.reports.date_bounds(account_ids)
+
+    def top_merchants(
+        self,
+        date_from: date | None,
+        date_to: date | None,
+        account_ids: Sequence[int] | None,
+        limit: int,
+    ) -> TopMerchants:
+        """A missing bound defaults to the first or last booking date available."""
+        with self._uow_factory() as uow:
+            bounds = uow.reports.date_bounds(account_ids)
+            if bounds is None:
+                return TopMerchants(date_from=None, date_to=None, currency=None, merchants=())
+            start = date_from or bounds.first
+            end = date_to or bounds.last
+            if start > end:
+                raise InvalidDateRangeError("the start date is after the end date")
+            rows = uow.reports.top_merchants(start, end, account_ids, limit)
         return TopMerchants(
-            year=year,
-            month=month,
+            date_from=start,
+            date_to=end,
             currency=_currency(rows),
             merchants=tuple(MerchantTotal(r.merchant, r.spent, r.transaction_count) for r in rows),
         )
