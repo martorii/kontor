@@ -15,7 +15,12 @@ CATEGORIES = ["food.groceries", "transport.public", "housing.rent", "leisure.res
 @pytest.fixture
 def client() -> LMStudioClient:
     s = Settings()
-    return LMStudioClient(s.llm_base_url, s.llm_model, s.llm_timeout_seconds, s.llm_api_key)
+    return LMStudioClient(
+        s.categorizer_llm_base_url,
+        s.categorizer_llm_model,
+        s.categorizer_llm_timeout_seconds,
+        s.categorizer_llm_api_key,
+    )
 
 
 def test_server_is_reachable(client: LMStudioClient) -> None:

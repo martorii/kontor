@@ -225,7 +225,7 @@ None for v1. Decided since the first draft: accounts always have an IBAN (§4.2a
   - the executed SQL
   - a chart spec (`bar`, `line`, or `none`) chosen by the LLM; the API checks it against the result columns and falls back to `none`
 - **16.7** Conversations are multi-turn and held in API process memory, like §8.7a. A restart clears them. Follow-ups see the earlier questions, SQL, and answers, but not the rows.
-- **16.8** The agent uses its own model setting, `AGENT_LLM_MODEL`, in LM Studio, separate from the categorizer's `LLM_MODEL`.
+- **16.8** The agent uses its own model setting, `AGENT_LLM_MODEL`, in LM Studio, separate from the categorizer's `CATEGORIZER_LLM_MODEL`. `AGENT_LLM_BASE_URL` and `AGENT_LLM_MODEL` are required, and have no fallback to the categorizer's settings.
 - **16.9** Evaluation:
   - a committed golden set of synthetic questions with reference SQL, run against seeded synthetic data
   - the metric is execution accuracy (result-set match)
@@ -257,3 +257,4 @@ None for v1. Decided since the first draft: accounts always have an IBAN (§4.2a
 - **2026-10-11** — Top merchants take a date range and several accounts (§11.1, §11.1a, §11.1b); they no longer take a year and month.
 - **2026-10-10** — v2 text-to-SQL agent decided (§16): free SELECT over the schema behind a read-only role and sqlglot validation, multi-turn in-memory conversations, a separate model, LLM-chosen charts, golden-set evaluation.
 - **2026-10-10** — Agent notes live in the package (`src/kontor/agent_notes.md`), not in `config/` (§16.4).
+- **2026-10-10** — Categorizer LLM settings renamed from `LLM_*` to `CATEGORIZER_LLM_*` (breaking: old names are no longer read). `CATEGORIZER_LLM_BASE_URL` and `CATEGORIZER_LLM_MODEL` are required; the API refuses to start without them. The agent gets its own `AGENT_LLM_BASE_URL` and `AGENT_LLM_MODEL`, also required (§16.8).

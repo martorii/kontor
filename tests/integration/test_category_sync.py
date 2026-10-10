@@ -70,7 +70,10 @@ def test_app_startup_syncs_the_example_tree(
     engine: Engine, postgres_url: str, uow_factory: "sessionmaker[Session]"
 ) -> None:
     settings = Settings(
-        database_url=postgres_url, rules_path=str(ROOT / "config" / "rules.example.yaml")
+        database_url=postgres_url,
+        rules_path=str(ROOT / "config" / "rules.example.yaml"),
+        categorizer_llm_base_url="http://llm.test/v1",
+        categorizer_llm_model="test-model",
     )
 
     with TestClient(create_app(settings)):
@@ -88,6 +91,15 @@ def test_app_startup_fails_fast_on_invalid_rules(tmp_path: Path, postgres_url: s
 
     with (
         pytest.raises(Exception, match="invalid YAML"),
-        TestClient(create_app(Settings(database_url=postgres_url, rules_path=str(bad)))),
+        TestClient(
+            create_app(
+                Settings(
+                    database_url=postgres_url,
+                    rules_path=str(bad),
+                    categorizer_llm_base_url="http://llm.test/v1",
+                    categorizer_llm_model="test-model",
+                )
+            )
+        ),
     ):
         pass

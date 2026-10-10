@@ -19,7 +19,7 @@ from kontor.adapters.db.uow import SqlUnitOfWork
 from kontor.adapters.llm.lmstudio import LMStudioClient
 from kontor.adapters.rules.yaml_source import YamlRulesSource
 from kontor.application.evaluation import evaluate, export_labeled_set
-from kontor.config import Settings
+from kontor.config import ConfigurationError, Settings
 from kontor.domain.evaluation import LabeledExample
 from kontor.logging import configure_logging
 
@@ -55,17 +55,27 @@ def run(path: Path, threshold: float | None, settings: Settings) -> int:
     if not examples:
         print(f"{path} has no labeled transactions.", file=sys.stderr)
         return 1
+    try:
+        settings.require_categorizer_llm()
+    except ConfigurationError as exc:
+        print(exc, file=sys.stderr)
+        return 1
     client = LMStudioClient(
-        settings.llm_base_url,
-        settings.llm_model,
-        settings.llm_timeout_seconds,
-        settings.llm_api_key,
+        settings.categorizer_llm_base_url,
+        settings.categorizer_llm_model,
+        settings.categorizer_llm_timeout_seconds,
+        settings.categorizer_llm_api_key,
     )
     if not client.is_healthy():
-        print(f"LM Studio is not reachable at {settings.llm_base_url}.", file=sys.stderr)
+        print(
+            f"LM Studio is not reachable at {settings.categorizer_llm_base_url}.",
+            file=sys.stderr,
+        )
         return 1
     rules = YamlRulesSource(Path(settings.rules_path)).load()
-    used_threshold = settings.llm_confidence_threshold if threshold is None else threshold
+    used_threshold = (
+        settings.categorizer_llm_confidence_threshold if threshold is None else threshold
+    )
     metrics, skipped = evaluate(client, examples, rules.categories, used_threshold)
     result = {
         "created_at": datetime.now(UTC).isoformat(),

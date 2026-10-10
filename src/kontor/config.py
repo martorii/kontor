@@ -4,6 +4,10 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+class ConfigurationError(Exception):
+    """A required setting is missing; the process must not start."""
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -11,12 +15,27 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     database_url: str = "postgresql+psycopg://kontor:change-me@localhost:5432/kontor"
     rules_path: str = "config/rules.yaml"
-    llm_base_url: str = "http://localhost:1234/v1"
-    llm_model: str = ""
-    llm_api_key: str = "lm-studio"
-    llm_timeout_seconds: float = 60.0
-    llm_confidence_threshold: float = 0.95
-    llm_concurrency: int = Field(default=4, ge=1)
-    llm_batch_size: int = Field(default=10, ge=1)
+    # Required by the API and `make eval` (see require_categorizer_llm), but not by Alembic,
+    # so they have no default and an empty value means "not set".
+    categorizer_llm_base_url: str = ""
+    categorizer_llm_model: str = ""
+    categorizer_llm_api_key: str = "lm-studio"
+    categorizer_llm_timeout_seconds: float = 60.0
+    categorizer_llm_confidence_threshold: float = 0.95
+    categorizer_llm_concurrency: int = Field(default=4, ge=1)
+    categorizer_llm_batch_size: int = Field(default=10, ge=1)
     agent_statement_timeout_seconds: float = Field(default=10.0, gt=0)
     agent_max_rows: int = Field(default=500, ge=1)
+
+    def require_categorizer_llm(self) -> None:
+        """Raise ConfigurationError unless the categorizer's LM Studio URL and model are set."""
+        missing = [
+            name
+            for name, value in (
+                ("CATEGORIZER_LLM_BASE_URL", self.categorizer_llm_base_url),
+                ("CATEGORIZER_LLM_MODEL", self.categorizer_llm_model),
+            )
+            if not value.strip()
+        ]
+        if missing:
+            raise ConfigurationError(f"{' and '.join(missing)} must be set (see .env.example).")
