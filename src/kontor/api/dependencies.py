@@ -1,6 +1,7 @@
 from fastapi import Request
 
 from kontor.application.accounts import AccountService
+from kontor.application.agent import AgentService
 from kontor.application.categorization import CategorizationService
 from kontor.application.import_service import ImportService
 from kontor.application.llm_step import LLMCategorizationStep
@@ -35,4 +36,9 @@ def get_review_service(request: Request) -> ReviewService:
 
 def get_report_service(request: Request) -> ReportService:
     service: ReportService = request.app.state.report_service
+    return service
+
+
+def get_agent_service(request: Request) -> AgentService:
+    service: AgentService = request.app.state.agent_service
     return service

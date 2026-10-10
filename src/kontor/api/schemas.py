@@ -1,9 +1,11 @@
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, JsonValue, StringConstraints
 
 from kontor.domain.account import Account
+from kontor.domain.agent import AgentAnswer, ChartSpec
 from kontor.domain.imports import ImportRecord, ImportResult
 from kontor.domain.llm import LLMProgress, LLMRunResult
 from kontor.domain.recategorization import RerunResult
@@ -265,3 +267,68 @@ class CategorySetResponse(BaseModel):
     transaction_id: int
     category: str
     source: str
+
+
+Question = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=2000)]
+
+
+class AskRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    question: Question
+    conversation_id: str | None = None
+
+
+class ChartResponse(BaseModel):
+    type: Literal["bar", "line", "none"]
+    x: str | None
+    y: str | None
+
+    @classmethod
+    def from_domain(cls, chart: ChartSpec) -> "ChartResponse":
+        return cls(type=chart.type, x=chart.x, y=chart.y)
+
+
+class AskResponse(BaseModel):
+    """An agent answer (CONTRACT §16.6). Money comes back as strings, never as floats."""
+
+    conversation_id: str
+    status: Literal["answered", "gave_up"]
+    answer: str
+    sql: str | None
+    columns: list[str]
+    rows: list[list[JsonValue]]
+    truncated: bool
+    chart: ChartResponse
+    attempts: int
+    last_error: str | None
+
+    @classmethod
+    def from_domain(cls, conversation_id: str, answer: AgentAnswer) -> "AskResponse":
+        result = answer.result
+        return cls(
+            conversation_id=conversation_id,
+            status=answer.status,
+            answer=answer.answer,
+            sql=answer.sql,
+            columns=list(result.columns) if result else [],
+            rows=[[to_json_value(v) for v in row] for row in result.rows] if result else [],
+            truncated=result.truncated if result else False,
+            chart=ChartResponse.from_domain(answer.chart),
+            attempts=answer.attempts,
+            last_error=answer.last_error,
+        )
+
+
+def to_json_value(value: object) -> JsonValue:
+    """One agent result cell as JSON. Decimal becomes a string so no precision is lost."""
+    if value is None or isinstance(value, bool | int | float | str):
+        return value
+    if isinstance(value, Decimal):
+        return format(value, "f")
+    if isinstance(value, date | datetime | time):
+        return value.isoformat()
+    if isinstance(value, dict | list):
+        # JSONB columns: psycopg already decoded them into JSON-compatible values.
+        return value
+    return str(value)

@@ -64,3 +64,7 @@ class QueryExecutionError(KontorError):
 
 class UnsafeQueryError(KontorError):
     """Agent SQL failed validation and must not run (CONTRACT §16.3). The message says why."""
+
+
+class ConversationNotFoundError(KontorError):
+    """No agent conversation with the given id; it never existed or has expired."""
