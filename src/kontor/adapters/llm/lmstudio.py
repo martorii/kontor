@@ -8,6 +8,7 @@ from decimal import Decimal
 import openai
 from openai import OpenAI
 
+from kontor.adapters.llm.errors import status_error_detail
 from kontor.domain.errors import LLMInvalidOutputError, LLMTimeoutError, LLMUnavailableError
 from kontor.domain.llm import LLMSuggestion
 from kontor.domain.transaction import Transaction
@@ -79,7 +80,7 @@ class LMStudioClient:
         except openai.APIConnectionError as exc:
             raise LLMUnavailableError(str(exc)) from exc
         except openai.APIStatusError as exc:
-            raise LLMUnavailableError(f"LM Studio returned HTTP {exc.status_code}") from exc
+            raise LLMUnavailableError(status_error_detail(exc)) from exc
 
         choice = response.choices[0]
         if not choice.message.content or choice.logprobs is None or not choice.logprobs.content:

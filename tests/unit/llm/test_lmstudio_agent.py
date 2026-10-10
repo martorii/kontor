@@ -1,5 +1,4 @@
 import json
-from datetime import date
 from decimal import Decimal
 
 import httpx2 as httpx
@@ -131,10 +130,9 @@ def test_sql_request_holds_history_and_failed_attempts() -> None:
         "And February?",
         [Turn("January?", "SELECT 1", "120.50")],
         [FailedAttempt("SELECT nope", 'column "nope" does not exist'), FailedAttempt(None, "bad")],
-        date(2026, 3, 1),
     )
 
-    assert "Today is 2026-03-01." in text
+    assert "Today is" not in text  # the dates are in the context
     assert "Question: January?\nSQL: SELECT 1\nAnswer: 120.50" in text
     assert text.index("January?") < text.index("Question: And February?")
     assert 'SQL: SELECT nope\nError: column "nope" does not exist' in text
@@ -142,9 +140,9 @@ def test_sql_request_holds_history_and_failed_attempts() -> None:
 
 
 def test_sql_request_without_history_or_failures_is_just_the_question() -> None:
-    text = render_sql_request("q?", [], [], date(2026, 3, 1))
+    text = render_sql_request("q?", [], [])
 
-    assert text == "Today is 2026-03-01.\n\nQuestion: q?"
+    assert text == "Question: q?"
 
 
 def test_summary_request_renders_rows_and_truncation() -> None:
@@ -160,3 +158,27 @@ def test_prompt_text_covers_prompts_and_templates() -> None:
     assert SQL_SYSTEM_PROMPT in PROMPT_TEXT
     assert "Earlier in this conversation" in PROMPT_TEXT
     assert "Only the first" in PROMPT_TEXT
+
+
+@pytest.mark.parametrize(
+    ("body", "detail"),
+    [
+        (
+            {"error": "The number of tokens to keep exceeds the context length"},
+            "LM Studio returned HTTP 400: The number of tokens to keep exceeds the context length",
+        ),
+        (
+            {"error": {"message": "model not loaded"}},
+            "LM Studio returned HTTP 400: model not loaded",
+        ),
+        ({}, "LM Studio returned HTTP 400"),
+    ],
+)
+def test_error_responses_carry_lm_studios_reason(body: dict[str, object], detail: str) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(400, json=body)
+
+    with pytest.raises(LLMUnavailableError) as excinfo:
+        agent_with(httpx.MockTransport(handler)).generate_sql("q", [], "", [])
+
+    assert str(excinfo.value) == detail

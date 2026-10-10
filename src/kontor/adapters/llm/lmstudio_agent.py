@@ -2,13 +2,13 @@
 
 import json
 from collections.abc import Sequence
-from datetime import date
 from decimal import Decimal
 from typing import Any
 
 import openai
 from openai import OpenAI
 
+from kontor.adapters.llm.errors import status_error_detail
 from kontor.domain.agent import ChartSpec, FailedAttempt, Summary, Turn
 from kontor.domain.errors import LLMInvalidOutputError, LLMTimeoutError, LLMUnavailableError
 
@@ -98,7 +98,7 @@ class LMStudioAgentLLM:
     ) -> str:
         content = self._complete(
             f"{SQL_SYSTEM_PROMPT}\n{context}",
-            render_sql_request(question, history, failed_attempts, date.today()),
+            render_sql_request(question, history, failed_attempts),
             "sql_query",
             SQL_SCHEMA,
         )
@@ -139,7 +139,7 @@ class LMStudioAgentLLM:
         except openai.APIConnectionError as exc:
             raise LLMUnavailableError(str(exc)) from exc
         except openai.APIStatusError as exc:
-            raise LLMUnavailableError(f"LM Studio returned HTTP {exc.status_code}") from exc
+            raise LLMUnavailableError(status_error_detail(exc)) from exc
         content = response.choices[0].message.content
         if not content:
             raise LLMInvalidOutputError("response has no content")
@@ -150,9 +150,9 @@ def render_sql_request(
     question: str,
     history: Sequence[Turn],
     failed_attempts: Sequence[FailedAttempt],
-    today: date,
 ) -> str:
-    parts = [f"Today is {today.isoformat()}."]
+    """The user message. Today's date and the date ranges are in the context."""
+    parts: list[str] = []
     if history:
         earlier = "\n\n".join(
             f"Question: {turn.question}\nSQL: {turn.sql or '(none)'}\nAnswer: {turn.answer}"
@@ -224,7 +224,6 @@ def _prompt_text() -> str:
         "QUESTION",
         [Turn("EARLIER", "SELECT 1", "ANSWER")],
         [FailedAttempt("SELECT 2", "ERROR")],
-        date(2000, 1, 1),
     )
     sample_summary = render_summary_request("QUESTION", "SELECT 1", ["a"], [[1]], True)
     return "\n---\n".join([SQL_SYSTEM_PROMPT, SUMMARY_SYSTEM_PROMPT, sample_sql, sample_summary])
