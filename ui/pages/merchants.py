@@ -32,6 +32,7 @@ st.bar_chart(
     x="Merchant",
     y="Spent",
     horizontal=True,
+    sort="-Spent",
 )
 st.dataframe(
     [
