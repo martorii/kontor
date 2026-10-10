@@ -60,3 +60,7 @@ class QueryTimeoutError(KontorError):
 
 class QueryExecutionError(KontorError):
     """Postgres rejected an agent query. The message is Postgres' own, for the retry prompt."""
+
+
+class UnsafeQueryError(KontorError):
+    """Agent SQL failed validation and must not run (CONTRACT §16.3). The message says why."""
