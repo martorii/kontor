@@ -26,6 +26,16 @@ class Settings(BaseSettings):
     categorizer_llm_batch_size: int = Field(default=10, ge=1)
     agent_statement_timeout_seconds: float = Field(default=10.0, gt=0)
     agent_max_rows: int = Field(default=500, ge=1)
+    # The agent's own LM Studio model (CONTRACT §16.8); no fallback to the categorizer's.
+    # Required once the agent is wired into the API (Step 28).
+    agent_llm_base_url: str = ""
+    agent_llm_model: str = ""
+    agent_llm_api_key: str = "lm-studio"
+    agent_llm_timeout_seconds: float = Field(default=120.0, gt=0)
+    agent_max_retries: int = Field(default=2, ge=0)
+    agent_summary_rows: int = Field(default=50, ge=1)
+    agent_max_turns: int = Field(default=10, ge=1)
+    agent_conversation_ttl_minutes: int = Field(default=60, ge=1)
 
     def require_categorizer_llm(self) -> None:
         """Raise ConfigurationError unless the categorizer's LM Studio URL and model are set."""

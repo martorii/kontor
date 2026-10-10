@@ -24,7 +24,7 @@ v1 (Steps 01–22) is complete. Its plan lives in the git history of this file.
 - **Pass gate** — The developer approves the PR.
 
 ### Step 24 — Read-only role and query executor
-- [ ] **Scope**
+- [x] **Scope**
   - an Alembic migration that creates a `NOLOGIN` role `kontor_agent` and grants it to the application user
   - `SELECT` on every table and view in `public`, except `alembic_version`, plus default privileges so future tables and views are covered too
   - a `QueryExecutor` port, with a Postgres adapter that runs each query:
@@ -41,7 +41,7 @@ v1 (Steps 01–22) is complete. Its plan lives in the git history of this file.
   - The migration drift check stays green.
 
 ### Step 25 — SQL validator
-- [ ] **Scope**
+- [x] **Scope**
   - a pure validator in `application` (no I/O), built on **sqlglot** (Postgres dialect). This is a new dependency to confirm.
   - it accepts exactly one statement: a `SELECT`, which may use CTEs, `UNION`, or subqueries
   - it rejects:
@@ -56,7 +56,7 @@ v1 (Steps 01–22) is complete. Its plan lives in the git history of this file.
 - **Pass gate** — A parametrized unit test covers at least 15 accepted and 15 rejected queries, and each rejection asserts its reason.
 
 ### Step 26 — Schema context
-- [ ] **Scope**
+- [x] **Scope**
   - a `SchemaIntrospector` port with a Postgres adapter, listing the relations, columns (with Postgres types) and single-column foreign keys that `kontor_agent` can `SELECT`
   - `SchemaInfo.allowed_relations` is the validator allowlist
   - the committed notes `src/kontor/agent_notes.md` hold the semantics, contain no real data, and ship inside the package:
@@ -72,7 +72,7 @@ v1 (Steps 01–22) is complete. Its plan lives in the git history of this file.
   - A unit test: the notes load, the rendering is stable, and the hash changes when any of its parts changes.
 
 ### Step 26a — Categorizer LLM settings
-- [ ] **Scope**
+- [x] **Scope**
   - hard rename of `LLM_*` to `CATEGORIZER_LLM_*`; the old names are no longer read
   - `CATEGORIZER_LLM_BASE_URL` and `CATEGORIZER_LLM_MODEL` are required: the API and `make eval` refuse to start without them, while Alembic does not need them
   - `docker-compose.yml` no longer defaults the URL; `.env.example` sets it explicitly
@@ -84,7 +84,7 @@ v1 (Steps 01–22) is complete. Its plan lives in the git history of this file.
 ## Phase G — The agent
 
 ### Step 27 — Agent graph
-- [ ] **Scope**
+- [x] **Scope**
   - **langgraph** is a new dependency (confirmed). It pulls in langchain-core and langsmith transitively; our code imports neither, and `LANGSMITH_TRACING=false` is set explicitly. The nodes call LM Studio through the existing `openai` client.
   - settings, explicit and independent of the categorizer's:
     - `AGENT_LLM_BASE_URL` and `AGENT_LLM_MODEL`, required: the API refuses to start without them (checked when the agent is wired, Step 28)
@@ -98,7 +98,7 @@ v1 (Steps 01–22) is complete. Its plan lives in the git history of this file.
   - `summarize` gets the question, the SQL, the columns, and at most `AGENT_SUMMARY_ROWS` rows (default 50). It returns:
     - a short answer in the language of the question
     - a chart spec `{type: bar|line|none, x, y}`
-  - the API checks the chart spec: `x` and `y` must be result columns, and `y` must be numeric. If not, the chart becomes `none`.
+  - the agent checks the chart spec: `x` and `y` must be result columns, and `y` must be numeric. If not, the chart becomes `none`.
   - an in-memory conversation store keyed by `conversation_id`
     - follow-ups see the earlier questions, SQL, and answers, but not the rows
     - at most 10 turns are kept, and a conversation is dropped after 60 minutes idle
