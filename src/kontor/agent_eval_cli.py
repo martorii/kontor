@@ -21,6 +21,7 @@ from alembic.config import Config
 from sqlalchemy import Engine, create_engine, text
 
 from kontor.adapters.db.query_executor import PostgresQueryExecutor
+from kontor.adapters.db.reference_values import PostgresReferenceValues
 from kontor.adapters.db.schema_introspector import PostgresSchemaIntrospector
 from kontor.adapters.llm.lmstudio_agent import LMStudioAgentLLM
 from kontor.agent_eval_seed import seed
@@ -101,6 +102,7 @@ def run(golden_path: Path, settings: Settings) -> int:
         executor,
         PostgresSchemaIntrospector(engine).introspect(),
         load_notes(),
+        PostgresReferenceValues(engine),
         ConversationStore(len(items), timedelta(hours=1)),
         max_retries=settings.agent_max_retries,
         summary_rows=settings.agent_summary_rows,

@@ -10,6 +10,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from kontor.adapters.db.query_executor import PostgresQueryExecutor
+from kontor.adapters.db.reference_values import PostgresReferenceValues
 from kontor.adapters.db.schema_introspector import PostgresSchemaIntrospector
 from kontor.adapters.db.uow import SqlUnitOfWork
 from kontor.adapters.llm.lmstudio import LMStudioClient
@@ -112,6 +113,7 @@ def create_app(
             ),
             schema,
             load_notes(),
+            PostgresReferenceValues(engine),
             ConversationStore(
                 settings.agent_max_turns,
                 timedelta(minutes=settings.agent_conversation_ttl_minutes),

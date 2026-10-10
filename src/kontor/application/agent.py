@@ -7,6 +7,7 @@ LLMTimeoutError, for the API to map.
 """
 
 from collections.abc import Callable, Sequence
+from datetime import date
 from decimal import Decimal
 from typing import Literal, TypedDict
 
@@ -14,7 +15,12 @@ import structlog
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from kontor.application.agent_context import prompt_hash, render_schema
+from kontor.application.agent_context import (
+    prompt_hash,
+    render_date_anchors,
+    render_reference,
+    render_schema,
+)
 from kontor.application.agent_conversations import ConversationStore
 from kontor.application.sql_validator import validate_query
 from kontor.domain.agent import (
@@ -37,6 +43,7 @@ from kontor.domain.query import QueryResult
 from kontor.domain.schema import SchemaInfo
 from kontor.ports.agent_llm import AgentLLM
 from kontor.ports.query_executor import QueryExecutor
+from kontor.ports.reference_values import ReferenceValuesSource
 
 log = structlog.get_logger()
 
@@ -48,6 +55,7 @@ _Node = Literal["generate_sql", "validate", "execute", "summarize"]
 
 class _State(TypedDict):
     question: str
+    context: str
     history: tuple[Turn, ...]
     attempts: int
     failed: tuple[FailedAttempt, ...]
@@ -80,7 +88,6 @@ class AgentGraph:
         llm: AgentLLM,
         executor: QueryExecutor,
         allowed_relations: frozenset[str],
-        context: str,
         *,
         max_retries: int,
         summary_rows: int,
@@ -88,14 +95,15 @@ class AgentGraph:
         self._llm = llm
         self._executor = executor
         self._allowed_relations = allowed_relations
-        self._context = context
         self._max_attempts = max_retries + 1
         self._summary_rows = summary_rows
         self._graph = self._build()
 
-    def run(self, question: str, history: Sequence[Turn]) -> AgentAnswer:
+    def run(self, question: str, history: Sequence[Turn], context: str) -> AgentAnswer:
+        """Answer one question. `context` is everything the model knows about the data."""
         initial: _State = {
             "question": question,
+            "context": context,
             "history": tuple(history),
             "attempts": 0,
             "failed": (),
@@ -171,7 +179,7 @@ class AgentGraph:
         update: dict[str, object] = {"attempts": attempt, "sql": None, "error": None}
         try:
             sql = self._llm.generate_sql(
-                state["question"], state["history"], self._context, state["failed"]
+                state["question"], state["history"], state["context"], state["failed"]
             )
         except LLMInvalidOutputError as exc:
             error = f"unusable model output: {exc}"
@@ -226,7 +234,11 @@ class AgentGraph:
 
 
 class AgentService:
-    """Answers questions within conversations, using the notes and the introspected schema."""
+    """Answers questions within conversations.
+
+    The model's context is the notes and the schema (fixed at startup), plus the category tree,
+    the account names and date ranges, which are read for every question because they change.
+    """
 
     def __init__(
         self,
@@ -234,23 +246,38 @@ class AgentService:
         executor: QueryExecutor,
         schema: SchemaInfo,
         notes: str,
+        reference: ReferenceValuesSource,
         store: ConversationStore,
         *,
         max_retries: int,
         summary_rows: int,
+        today: Callable[[], date] = date.today,
     ) -> None:
         schema_text = render_schema(schema)
         self._llm = llm
         self._store = store
+        self._reference = reference
+        self._today = today
+        self._static_context = f"{notes}\n\n# Schema\n\n{schema_text}"
         self._graph = AgentGraph(
             llm,
             executor,
             schema.allowed_relations,
-            f"{notes}\n\n# Schema\n\n{schema_text}",
             max_retries=max_retries,
             summary_rows=summary_rows,
         )
+        # The reference values and dates are data, not prompt: they stay out of the hash.
         self.prompt_hash = prompt_hash(llm.prompt_text, notes, schema_text)
+
+    def context(self) -> str:
+        """The full context for the next question."""
+        return "\n\n".join(
+            [
+                self._static_context,
+                render_reference(self._reference.load()),
+                render_date_anchors(self._today()),
+            ]
+        )
 
     @property
     def model_name(self) -> str:
@@ -269,7 +296,7 @@ class AgentService:
             history = ()
         with structlog.contextvars.bound_contextvars(conversation_id=conversation_id):
             log.info("agent_question", turns=len(history))
-            answer = self._graph.run(question, history)
+            answer = self._graph.run(question, history, self.context())
             log.info("agent_answered", status=answer.status, attempts=answer.attempts)
         self._store.append(conversation_id, Turn(question, answer.sql, answer.answer))
         return conversation_id, answer

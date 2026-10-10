@@ -15,6 +15,8 @@ schema listing that follows them says which tables, views and columns exist.
   a subcategory has a `parent_slug` and no `kind`. Subcategory slugs look like
   `<parent>.<name>`, for example `food.groceries`.
 - `kind` is one of `expense`, `income`, `transfer`, `savings`.
+- The full category tree, with slugs and names, is in the Categories section below. Filter on
+  slugs (`sub_slug`, `top_slug`), not on names, and only on slugs that are listed there.
 - A transaction points at a subcategory through `transactions.category_slug`, or has none
   (uncategorized). `category_source` says who set it: `rule`, `llm` or `manual`; it is null
   exactly when the transaction is uncategorized.
@@ -46,7 +48,8 @@ schema listing that follows them says which tables, views and columns exist.
 
 - `booking_date` is the date the bank booked the transaction; use it for date filters.
   `value_date` may be null.
-- "Last month" and similar phrases are relative to `current_date`.
+- For "last month", "this year" and similar phrases, use the literal ranges in the Dates
+  section below; do not compute dates from `current_date` yourself.
 
 ## Accounts and imports
 

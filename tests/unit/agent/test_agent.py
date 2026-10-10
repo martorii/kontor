@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import date, timedelta
 from decimal import Decimal
 
 import pytest
@@ -19,6 +19,7 @@ from kontor.domain.errors import (
     QueryTimeoutError,
 )
 from kontor.domain.query import QueryResult
+from kontor.domain.reference import CategoryRef, ReferenceValues
 from kontor.domain.schema import Column, Relation, SchemaInfo
 
 SCHEMA = SchemaInfo(
@@ -41,6 +42,22 @@ MONTHLY = QueryResult(
 BAR = ChartSpec("bar", "month", "spent")
 
 
+class StaticReference:
+    """Reference values for tests; change `values` between questions to simulate edits."""
+
+    def __init__(self, values: ReferenceValues | None = None) -> None:
+        self.values = values or ReferenceValues(
+            categories=(
+                CategoryRef("food", "Food", None, "expense"),
+                CategoryRef("food.groceries", "Groceries", "food", None),
+            ),
+            accounts=("Girokonto",),
+        )
+
+    def load(self) -> ReferenceValues:
+        return self.values
+
+
 class FakeExecutor:
     """Returns or raises the scripted outcomes in order and records the SQL it receives."""
 
@@ -61,6 +78,7 @@ def make_service(
     executor: FakeExecutor,
     *,
     store: ConversationStore | None = None,
+    reference: StaticReference | None = None,
     max_retries: int = 2,
     summary_rows: int = 50,
 ) -> AgentService:
@@ -69,9 +87,11 @@ def make_service(
         executor,
         SCHEMA,
         "NOTES",
+        reference or StaticReference(),
         store or ConversationStore(max_turns=10, ttl=timedelta(minutes=60)),
         max_retries=max_retries,
         summary_rows=summary_rows,
+        today=lambda: date(2026, 10, 10),
     )
 
 
@@ -301,8 +321,13 @@ def test_unknown_conversation_starts_fresh() -> None:
 def test_prompt_hash_covers_the_notes_and_schema() -> None:
     llm = FakeAgentLLM()
     store = ConversationStore(max_turns=10, ttl=timedelta(minutes=60))
-    base = AgentService(llm, FakeExecutor(), SCHEMA, "NOTES", store, max_retries=2, summary_rows=5)
-    other = AgentService(llm, FakeExecutor(), SCHEMA, "OTHER", store, max_retries=2, summary_rows=5)
+    ref = StaticReference()
+    base = AgentService(
+        llm, FakeExecutor(), SCHEMA, "NOTES", ref, store, max_retries=2, summary_rows=5
+    )
+    other = AgentService(
+        llm, FakeExecutor(), SCHEMA, "OTHER", ref, store, max_retries=2, summary_rows=5
+    )
 
     assert len(base.prompt_hash) == 64
     assert base.prompt_hash != other.prompt_hash
@@ -354,3 +379,56 @@ def test_untokenizable_sql_is_retried_not_raised() -> None:
     assert answer.status == "answered"
     assert answer.attempts == 2
     assert "could not parse the SQL" in llm.sql_calls[1].failed_attempts[0].error
+
+
+def test_context_holds_categories_accounts_and_dates() -> None:
+    llm = FakeAgentLLM(sql=[GOOD_SQL], summaries=[Summary("ok", NO_CHART)])
+
+    make_service(llm, FakeExecutor(MONTHLY)).ask("q", None)
+
+    context = llm.sql_calls[0].context
+    assert "- food.groceries: Groceries" in context
+    assert "- Girokonto" in context
+    assert "Today is 2026-10-10." in context
+    assert "last month: booking_date >= '2026-09-01' AND booking_date < '2026-10-01'" in context
+
+
+def test_reference_values_are_read_for_every_question() -> None:
+    reference = StaticReference()
+    llm = FakeAgentLLM(sql=[GOOD_SQL, GOOD_SQL], summaries=[Summary("ok", NO_CHART)] * 2)
+    service = make_service(llm, FakeExecutor(MONTHLY, MONTHLY), reference=reference)
+
+    service.ask("q1", None)
+    reference.values = ReferenceValues(reference.values.categories, ("Renamed account",))
+    service.ask("q2", None)
+
+    assert "- Girokonto" in llm.sql_calls[0].context
+    assert "- Renamed account" in llm.sql_calls[1].context
+
+
+def test_reference_values_stay_out_of_the_prompt_hash() -> None:
+    llm = FakeAgentLLM()
+    store = ConversationStore(max_turns=10, ttl=timedelta(minutes=60))
+    other_values = ReferenceValues((), ("Other",))
+    first = AgentService(
+        llm,
+        FakeExecutor(),
+        SCHEMA,
+        "NOTES",
+        StaticReference(),
+        store,
+        max_retries=2,
+        summary_rows=5,
+    )
+    second = AgentService(
+        llm,
+        FakeExecutor(),
+        SCHEMA,
+        "NOTES",
+        StaticReference(other_values),
+        store,
+        max_retries=2,
+        summary_rows=5,
+    )
+
+    assert first.prompt_hash == second.prompt_hash
