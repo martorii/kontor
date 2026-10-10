@@ -18,7 +18,7 @@ v1 (Steps 01–22) is complete. Its plan lives in the git history of this file.
 ## Phase F — Agent foundations
 
 ### Step 23 — v2 contract and plan
-- [ ] **Scope**
+- [x] **Scope**
   - `CONTRACT.md` §16 records the agent decisions
   - this `PLAN.md` replaces the v1 plan
 - **Pass gate** — The developer approves the PR.
