@@ -29,11 +29,12 @@ deploy:
 	docker compose pull
 	docker compose up -d
 
-# Fast-forward main from origin, then deploy (the pinned tag comes from the pulled compose file / .env).
+# Fast-forward main from origin, then build the api and ui images from source and restart.
+# The images keep the pinned tag name, so migrate runs the freshly built api image.
 deploy-main-locally:
 	@test "$$(git branch --show-current)" = "main" || { echo "switch to main first"; exit 1; }
 	git pull --ff-only origin main
-	$(MAKE) deploy
+	docker compose up -d --build
 
 # Export manual categorizations to the gitignored eval_export.jsonl. Needs DATABASE_URL.
 eval-export:
