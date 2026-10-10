@@ -117,9 +117,6 @@ class ApiClient:
     def year_report(self, year: int, account_id: int | None) -> dict[str, Any]:
         return self.report("year", year=year, account_id=account_id)
 
-    def income_expenses_report(self, year: int, account_id: int | None) -> dict[str, Any]:
-        return self.report("income-expenses", year=year, account_id=account_id)
-
     def top_merchants_report(
         self, year: int, month: int | None, account_id: int | None, limit: int
     ) -> dict[str, Any]:

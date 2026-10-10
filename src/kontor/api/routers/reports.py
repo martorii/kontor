@@ -5,7 +5,6 @@ from fastapi import APIRouter, Depends, Query
 from kontor.api.dependencies import get_report_service
 from kontor.application.reports import ReportService
 from kontor.domain.reports import (
-    IncomeExpenses,
     MonthlyOverview,
     TopMerchants,
     YearComparison,
@@ -31,11 +30,6 @@ def monthly(
 @router.get("/year")
 def year_comparison(service: Service, year: Year, account_id: AccountId = None) -> YearComparison:
     return service.year_comparison(year, account_id)
-
-
-@router.get("/income-expenses")
-def income_expenses(service: Service, year: Year, account_id: AccountId = None) -> IncomeExpenses:
-    return service.income_expenses(year, account_id)
 
 
 @router.get("/top-merchants")

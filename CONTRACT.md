@@ -50,7 +50,7 @@ A decision changes only when the developer explicitly decides so. Every change i
 - **5.1** Categories form a **two-level tree**: top-level category → subcategory. The concrete starting tree is in `config/rules.example.yaml` (e.g. `food.groceries`, `kids.daycare`); the developer adapts it in their own `rules.yaml`.
 - **5.2** The tree is defined in the YAML file together with the rules. Each category has a stable slug ID (e.g. `food.groceries`).
 - **5.3** The tree is synced into a `categories` table at startup. Transactions reference categories by foreign key.
-- **5.4** Every top-level category has a **kind**: `expense`, `income`, `transfer`, or `savings`. Spending reports count only `expense`. Income vs. expenses excludes `transfer` and `savings`.
+- **5.4** Every top-level category has a **kind**: `expense`, `income`, `transfer`, or `savings`. Spending reports count only `expense`. `transfer` and `savings` are excluded from reports.
 - **5.5** Each transaction has **exactly one** category, or none (uncategorized). Split transactions are not part of v1.
 - **5.6** Rules assign **subcategories** only. A top-level category is never a rule target.
 - **5.7** The category sync only inserts and updates. A category removed from the YAML stays in the database, because transactions may still reference it.
@@ -149,17 +149,15 @@ A decision changes only when the developer explicitly decides so. Every change i
 - **11.1** v1 contains these views:
   1. **Monthly overview** — spending per top-level category per month, with drill-down to subcategories
   2. **Year view / comparison** — totals per category for a year, compared with the previous year
-  3. **Income vs. expenses** — monthly income, expenses, net, and savings rate
-  4. **Top merchants** — spending by normalized counterparty
-  5. **Transaction explorer** — filterable by account, date range, category, text, and categorization source
-  6. **Review tab** — uncategorized transactions and LLM suggestions, assigned manually
-  7. **Import history** — each upload with its counts and status
+  3. **Top merchants** — spending by normalized counterparty
+  4. **Transaction explorer** — filterable by account, date range, category, text, and categorization source
+  5. **Review tab** — uncategorized transactions and LLM suggestions, assigned manually
+  6. **Import history** — each upload with its counts and status
 - **11.1a** Report semantics:
   - **Spending** is the outflow in `expense` categories, and refunds (positive amounts in an expense category) reduce it. `income` categories count as income. `transfer` and `savings` count as neither (§5.4).
   - Uncategorized transactions are a separate `uncategorized` bucket: negative amounts count as expenses and positive amounts as income. Reports flag this as provisional (`includes_uncategorized`).
-  - The savings rate is `(income − expenses) / income`, null without income.
   - Reports assume one currency. If the selected data has several, the endpoint returns 422 and asks for an account.
-  - Endpoints: `/reports/monthly`, `/reports/year`, `/reports/income-expenses`, `/reports/top-merchants`, `GET /transactions` for the explorer, and `GET /categories` for the assignable subcategories. All take an optional `account_id` where it applies.
+  - Endpoints: `/reports/monthly`, `/reports/year`, `/reports/top-merchants`, `GET /transactions` for the explorer, and `GET /categories` for the assignable subcategories. All take an optional `account_id` where it applies.
 - **11.2** The UI also lets the user view and edit accounts.
 - **11.3** Aggregations live in **FastAPI endpoints backed by SQL views**, not in Streamlit. The views are tested with pytest against Postgres.
 - **11.4** Budgets, recurring-payment detection, and running balances are not part of v1.
@@ -226,3 +224,4 @@ None for v1. Decided since the first draft: accounts always have an IBAN (§4.2a
 - **2026-10-06** — v1 cleanup: every account has an IBAN (§4.2a, closes 15.3); the repository is public (closes 15.5); §15 has no open items.
 - **2026-10-06** — LLM progress endpoint decided (§8.7a): in-memory progress of the running LLM step, for the upload progress bar.
 - **2026-10-08** — LLM default threshold raised to 0.95 (§7.4) because of poor LLM accuracy; answers below it stay unapplied suggestions.
+- **2026-10-10** — Removed the Income vs. expenses report (§11.1, §11.1a): the UI tab, the `/reports/income-expenses` endpoint and the `v_monthly_income_expenses` view.

@@ -9,7 +9,6 @@ from kontor.domain.recategorization import Candidate, Change
 from kontor.domain.reports import (
     CategorySpendingRow,
     ExplorerPage,
-    IncomeExpensesRow,
     MerchantRow,
     TransactionFilter,
 )
@@ -99,8 +98,6 @@ class ReportRepository(Protocol):
     def category_spending(
         self, year: int, month: int | None, account_id: int | None
     ) -> list[CategorySpendingRow]: ...
-
-    def income_expenses(self, year: int, account_id: int | None) -> list[IncomeExpensesRow]: ...
 
     def top_merchants(
         self, year: int, month: int | None, account_id: int | None, limit: int

@@ -22,15 +22,6 @@ class CategorySpendingRow:
 
 
 @dataclass(frozen=True, slots=True)
-class IncomeExpensesRow:
-    currency: str
-    month: int
-    income: Decimal
-    expenses: Decimal
-    uncategorized_count: int
-
-
-@dataclass(frozen=True, slots=True)
 class MerchantRow:
     currency: str
     merchant: str
@@ -88,27 +79,6 @@ class YearComparison:
     change: Decimal
     includes_uncategorized: bool
     categories: tuple[YearCategory, ...]
-
-
-@dataclass(frozen=True, slots=True)
-class MonthIncomeExpenses:
-    month: int
-    income: Decimal
-    expenses: Decimal
-    net: Decimal
-    savings_rate: Decimal | None  # (income - expenses) / income, None without income
-
-
-@dataclass(frozen=True, slots=True)
-class IncomeExpenses:
-    year: int
-    currency: str | None
-    includes_uncategorized: bool
-    income: Decimal
-    expenses: Decimal
-    net: Decimal
-    savings_rate: Decimal | None
-    months: tuple[MonthIncomeExpenses, ...]  # always 12
 
 
 @dataclass(frozen=True, slots=True)

@@ -102,10 +102,6 @@ def test_transfer_and_savings_are_not_spending(make_client: MakeClient) -> None:
     merchants = client.get("/reports/top-merchants", params={"year": 2026}).json()
     assert {m["merchant"] for m in merchants["merchants"]}.isdisjoint({"OWN ACCOUNT", "BROKER AG"})
 
-    income = client.get("/reports/income-expenses", params={"year": 2026}).json()
-    assert money(income["expenses"]) == Decimal("580.00")  # no transfer, no savings
-    assert money(income["income"]) == Decimal("6000.00")
-
 
 def test_year_comparison(make_client: MakeClient) -> None:
     client = make_client(RULES)
@@ -123,28 +119,6 @@ def test_year_comparison(make_client: MakeClient) -> None:
     assert money(by_slug["food"]["change_ratio"]) == Decimal("1.9200")
     assert money(by_slug["housing"]["change_ratio"]) == Decimal("0.2500")
     assert by_slug["uncategorized"]["change_ratio"] is None  # nothing in 2025
-
-
-def test_income_vs_expenses_by_month(make_client: MakeClient) -> None:
-    client = make_client(RULES)
-    seed(client)
-
-    body = client.get("/reports/income-expenses", params={"year": 2026}).json()
-
-    assert len(body["months"]) == 12
-    march, april, may = body["months"][2], body["months"][3], body["months"][4]
-    assert (money(march["income"]), money(march["expenses"]), money(march["net"])) == (
-        Decimal("3000.00"),
-        Decimal("540.00"),
-        Decimal("2460.00"),
-    )
-    assert money(march["savings_rate"]) == Decimal("0.8200")
-    assert money(april["expenses"]) == Decimal("40.00")
-    assert money(april["savings_rate"]) == Decimal("0.9867")
-    assert (money(may["income"]), may["savings_rate"]) == (Decimal(0), None)
-    assert money(body["net"]) == Decimal("5420.00")
-    assert money(body["savings_rate"]) == Decimal("0.9033")
-    assert body["includes_uncategorized"] is True
 
 
 def test_top_merchants(make_client: MakeClient) -> None:
