@@ -198,3 +198,46 @@ def test_run_llm_posts_with_the_dry_run_flag() -> None:
         "/categorization/llm",
         b"dry_run=true",
     )
+
+
+def test_ask_sends_the_question_and_the_conversation() -> None:
+    bodies: list[object] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert (request.method, request.url.path) == ("POST", "/agent/ask")
+        bodies.append(json.loads(request.content))
+        return httpx.Response(200, json={"conversation_id": "c1", "status": "answered"})
+
+    client = client_with(httpx.MockTransport(handler))
+    first = client.ask("How much?", None)
+    client.ask("And then?", "c1")
+
+    assert first["conversation_id"] == "c1"
+    assert bodies == [{"question": "How much?"}, {"question": "And then?", "conversation_id": "c1"}]
+
+
+def test_ask_uses_the_agent_timeout() -> None:
+    assert ApiClient().agent_timeout > ApiClient().timeout
+
+
+def test_forget_conversation_sends_a_delete_and_accepts_no_content() -> None:
+    seen: list[tuple[str, str]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append((request.method, request.url.path))
+        return httpx.Response(204)
+
+    client_with(httpx.MockTransport(handler)).forget_conversation("c1")
+
+    assert seen == [("DELETE", "/agent/conversations/c1")]
+
+
+def test_ask_maps_503_to_an_api_error_with_the_detail() -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, json={"error": "LLMUnavailableError", "detail": "down"})
+
+    with pytest.raises(ApiError) as excinfo:
+        client_with(httpx.MockTransport(handler)).ask("q", None)
+
+    assert excinfo.value.status_code == 503
+    assert excinfo.value.detail == "down"

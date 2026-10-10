@@ -45,6 +45,16 @@ class FailedAttempt:
 
 
 @dataclass(frozen=True, slots=True)
+class AttemptRecord:
+    """What one attempt did: its SQL, and either why it failed or how many rows it returned."""
+
+    attempt: int
+    sql: str | None
+    error: str | None
+    rows: int | None
+
+
+@dataclass(frozen=True, slots=True)
 class AgentAnswer:
     status: AgentStatus
     answer: str
@@ -53,3 +63,5 @@ class AgentAnswer:
     chart: ChartSpec
     attempts: int
     last_error: str | None = None
+    # Every attempt in order, so the UI can show what happened (failed attempts first).
+    trace: tuple[AttemptRecord, ...] = ()

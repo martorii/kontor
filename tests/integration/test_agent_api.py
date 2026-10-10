@@ -33,6 +33,7 @@ def test_answered_returns_sql_rows_and_chart(
     assert body["chart"] == {"type": "bar", "x": "day", "y": "amount"}
     assert body["attempts"] == 1
     assert body["last_error"] is None
+    assert body["trace"] == [{"attempt": 1, "sql": VALUES_SQL, "error": None, "rows": 1}]
     assert body["conversation_id"]
 
 
@@ -65,6 +66,19 @@ def test_postgres_error_is_retried(client: TestClient, fake_agent_llm: FakeAgent
     assert body["status"] == "answered"
     assert body["attempts"] == 2
     assert "nope" in fake_agent_llm.sql_calls[1].failed_attempts[0].error
+    failed, answered = body["trace"]
+    assert (failed["attempt"], failed["sql"], failed["rows"]) == (
+        1,
+        "SELECT nope FROM v_flows",
+        None,
+    )
+    assert "nope" in failed["error"]
+    assert answered == {
+        "attempt": 2,
+        "sql": "SELECT COUNT(*) AS n FROM v_flows",
+        "error": None,
+        "rows": 1,
+    }
 
 
 def test_gave_up_carries_the_last_sql_and_error(
@@ -86,6 +100,8 @@ def test_gave_up_carries_the_last_sql_and_error(
     assert body["columns"] == []
     assert body["rows"] == []
     assert body["chart"] == {"type": "none", "x": None, "y": None}
+    assert [record["attempt"] for record in body["trace"]] == [1, 2, 3]
+    assert body["trace"][-1]["sql"] == "SELECT * FROM alembic_version"
 
 
 def test_follow_up_continues_the_conversation(

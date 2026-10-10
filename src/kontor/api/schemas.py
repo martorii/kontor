@@ -5,7 +5,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, JsonValue, StringConstraints
 
 from kontor.domain.account import Account
-from kontor.domain.agent import AgentAnswer, ChartSpec
+from kontor.domain.agent import AgentAnswer, AttemptRecord, ChartSpec
 from kontor.domain.imports import ImportRecord, ImportResult
 from kontor.domain.llm import LLMProgress, LLMRunResult
 from kontor.domain.recategorization import RerunResult
@@ -289,6 +289,19 @@ class ChartResponse(BaseModel):
         return cls(type=chart.type, x=chart.x, y=chart.y)
 
 
+class AttemptResponse(BaseModel):
+    """One attempt: its SQL, and either the error or the number of rows it returned."""
+
+    attempt: int
+    sql: str | None
+    error: str | None
+    rows: int | None
+
+    @classmethod
+    def from_domain(cls, record: AttemptRecord) -> "AttemptResponse":
+        return cls(attempt=record.attempt, sql=record.sql, error=record.error, rows=record.rows)
+
+
 class AskResponse(BaseModel):
     """An agent answer (CONTRACT §16.6). Money comes back as strings, never as floats."""
 
@@ -302,6 +315,7 @@ class AskResponse(BaseModel):
     chart: ChartResponse
     attempts: int
     last_error: str | None
+    trace: list[AttemptResponse]
 
     @classmethod
     def from_domain(cls, conversation_id: str, answer: AgentAnswer) -> "AskResponse":
@@ -317,6 +331,7 @@ class AskResponse(BaseModel):
             chart=ChartResponse.from_domain(answer.chart),
             attempts=answer.attempts,
             last_error=answer.last_error,
+            trace=[AttemptResponse.from_domain(record) for record in answer.trace],
         )
 
 

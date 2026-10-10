@@ -11,7 +11,7 @@ from kontor.application.agent import (
     check_chart,
 )
 from kontor.application.agent_conversations import ConversationStore
-from kontor.domain.agent import NO_CHART, ChartSpec, Summary
+from kontor.domain.agent import NO_CHART, AttemptRecord, ChartSpec, Summary
 from kontor.domain.errors import (
     LLMInvalidOutputError,
     LLMUnavailableError,
@@ -307,3 +307,36 @@ def test_prompt_hash_covers_the_notes_and_schema() -> None:
     assert len(base.prompt_hash) == 64
     assert base.prompt_hash != other.prompt_hash
     assert base.model_name == "fake"
+
+
+def test_trace_of_a_first_time_answer() -> None:
+    llm = FakeAgentLLM(sql=[GOOD_SQL], summaries=[Summary("ok", NO_CHART)])
+
+    _, answer = make_service(llm, FakeExecutor(MONTHLY)).ask("q", None)
+
+    assert answer.trace == (AttemptRecord(1, GOOD_SQL, None, 2),)
+
+
+def test_trace_lists_failed_attempts_before_the_answer() -> None:
+    llm = FakeAgentLLM(
+        sql=[LLMInvalidOutputError("not JSON"), "DELETE FROM v_flows", GOOD_SQL],
+        summaries=[Summary("ok", NO_CHART)],
+    )
+
+    _, answer = make_service(llm, FakeExecutor(MONTHLY)).ask("q", None)
+
+    first, second, third = answer.trace
+    assert (first.attempt, first.sql, first.rows) == (1, None, None)
+    assert first.error is not None and "unusable model output" in first.error
+    assert (second.attempt, second.sql, second.rows) == (2, "DELETE FROM v_flows", None)
+    assert second.error is not None and "DELETE" in second.error
+    assert third == AttemptRecord(3, GOOD_SQL, None, 2)
+
+
+def test_trace_of_a_gave_up_answer_has_every_failure() -> None:
+    llm = FakeAgentLLM(sql=["DROP VIEW v_flows", "DROP VIEW v_flows", "DROP VIEW v_flows"])
+
+    _, answer = make_service(llm, FakeExecutor()).ask("q", None)
+
+    assert [record.attempt for record in answer.trace] == [1, 2, 3]
+    assert all(record.error and record.rows is None for record in answer.trace)
