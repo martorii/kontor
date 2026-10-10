@@ -10,7 +10,7 @@ from fnmatch import fnmatch
 
 import sqlglot
 from sqlglot import exp
-from sqlglot.errors import ParseError
+from sqlglot.errors import SqlglotError
 
 from kontor.domain.errors import UnsafeQueryError
 
@@ -73,7 +73,7 @@ def validate_query(sql: str, allowed_relations: frozenset[str]) -> None:
 def _parse_single(sql: str) -> exp.Expr:
     try:
         parsed = sqlglot.parse(sql, read="postgres")
-    except ParseError as exc:
+    except SqlglotError as exc:  # ParseError, and TokenError for e.g. an unclosed quote
         raise UnsafeQueryError(f"could not parse the SQL: {exc}") from exc
     statements = [statement for statement in parsed if statement is not None]
     if not statements:

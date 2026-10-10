@@ -227,9 +227,10 @@ None for v1. Decided since the first draft: accounts always have an IBAN (§4.2a
 - **16.7** Conversations are multi-turn and held in API process memory, like §8.7a. A restart clears them. Follow-ups see the earlier questions, SQL, and answers, but not the rows.
 - **16.8** The agent uses its own model setting, `AGENT_LLM_MODEL`, in LM Studio, separate from the categorizer's `CATEGORIZER_LLM_MODEL`. `AGENT_LLM_BASE_URL` and `AGENT_LLM_MODEL` are required, and have no fallback to the categorizer's settings.
 - **16.9** Evaluation:
-  - a committed golden set of synthetic questions with reference SQL, run against seeded synthetic data
-  - the metric is execution accuracy (result-set match)
-  - `make eval-agent` writes a JSON result file like §12.3
+  - a committed golden set (`tests/agent_eval/golden.yaml`) of synthetic questions with reference SQL, run against deterministic synthetic data in a throwaway Postgres container
+  - the main metric is execution accuracy. A result counts as correct when it matches the reference result by value: column names are ignored, numbers are rounded to cents, the number of columns must match, and rows are compared as a multiset (or in order, when the item says `ordered`).
+  - the other metrics: validity rate, give-up rate, empty-result rate (answers with no rows or only NULLs), average attempts, and average latency
+  - `make eval-agent` writes `eval_results/agent-<timestamp>.json` with the metrics, the model name, the prompt hash, a hash of the golden set, and every question's SQL and outcome
   - the evaluation does not run in CI (§12.5)
 - **16.10** The UI gets an **Ask** tab. It renders the API response and nothing more (§2.3).
 
@@ -258,3 +259,4 @@ None for v1. Decided since the first draft: accounts always have an IBAN (§4.2a
 - **2026-10-10** — v2 text-to-SQL agent decided (§16): free SELECT over the schema behind a read-only role and sqlglot validation, multi-turn in-memory conversations, a separate model, LLM-chosen charts, golden-set evaluation.
 - **2026-10-10** — Agent notes live in the package (`src/kontor/agent_notes.md`), not in `config/` (§16.4).
 - **2026-10-10** — Categorizer LLM settings renamed from `LLM_*` to `CATEGORIZER_LLM_*` (breaking: old names are no longer read). `CATEGORIZER_LLM_BASE_URL` and `CATEGORIZER_LLM_MODEL` are required; the API refuses to start without them. The agent gets its own `AGENT_LLM_BASE_URL` and `AGENT_LLM_MODEL`, also required (§16.8).
+- **2026-10-10** — Agent evaluation decided (§16.9): golden set on synthetic data in a throwaway container, scoring rules, and the empty-result rate.

@@ -125,7 +125,7 @@ v1 (Steps 01–22) is complete. Its plan lives in the git history of this file.
 - **Pass gate** — API tests with the fake LLM cover each status and each error mapping. The rows round-trip `Decimal` values as strings, and no float conversion happens.
 
 ### Step 29 — Streamlit "Ask" tab
-- [ ] **Scope**
+- [x] **Scope**
   - a chat page built with `st.chat_message`: the history of the current session, and a "New conversation" button
   - each answer shows:
     - the summary
@@ -141,7 +141,7 @@ v1 (Steps 01–22) is complete. Its plan lives in the git history of this file.
 ## Phase H — Evaluation and release
 
 ### Step 30 — Agent evaluation
-- [ ] **Scope**
+- [x] **Scope**
   - a committed golden set, `tests/agent_eval/golden.yaml`, with at least 25 synthetic questions, each with reference SQL
   - a seed script that loads synthetic fixture data into a scratch database. This is never the real database.
   - **execution accuracy**:

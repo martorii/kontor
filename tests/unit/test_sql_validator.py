@@ -88,6 +88,8 @@ def test_accepts_read_only_selects(sql: str) -> None:
         ),
         ("EXPLAIN ANALYZE SELECT 1", "got COMMAND"),
         ("garbage text here", "could not parse the SQL"),
+        ("SELECT * FROM accounts WHERE name = 'unclosed", "could not parse the SQL"),
+        ("SELECT date_trunc('month', current_date')", "could not parse the SQL"),
         ("", "the query is empty"),
         ("VALUES (1)", "only SELECT queries are allowed, got VALUES"),
     ],
