@@ -209,6 +209,30 @@ A decision changes only when the developer explicitly decides so. Every change i
 
 None for v1. Decided since the first draft: accounts always have an IBAN (§4.2a), and the repository is public.
 
+## 16. Text-to-SQL agent (v2)
+
+- **16.1** The agent answers questions about the user's finances by writing and running its own SQL. It uses **LangGraph**, and its nodes call LM Studio through the existing `openai` client. It ships as **v2.0.0**.
+- **16.2** The agent may write `SELECT` queries against every table and view in `public` except `alembic_version`.
+- **16.3** Safety is enforced in two independent layers:
+  - **Database:** queries run in a `READ ONLY` transaction, under `SET LOCAL ROLE kontor_agent` (a `NOLOGIN` role with `SELECT` only), with a statement timeout (default 10 s) and a row cap (default 500, with a `truncated` flag).
+  - **Validation:** before execution, **sqlglot** checks that the SQL is exactly one `SELECT` statement, that it references only allowed relations, and that it calls no denylisted functions.
+  - SQL that fails validation is never executed.
+- **16.4** The agent learns the schema by introspecting what `kontor_agent` can read, plus a committed notes file (`config/agent_notes.md`) that explains the semantics (§10.2, §11.1a).
+- **16.5** Errors: a failed validation or execution goes back to the model with the error message, at most 2 retries. After that, the agent answers with `gave_up` and the last error.
+- **16.6** An answer contains:
+  - a natural-language summary
+  - the result table
+  - the executed SQL
+  - a chart spec (`bar`, `line`, or `none`) chosen by the LLM; the API checks it against the result columns and falls back to `none`
+- **16.7** Conversations are multi-turn and held in API process memory, like §8.7a. A restart clears them. Follow-ups see the earlier questions, SQL, and answers, but not the rows.
+- **16.8** The agent uses its own model setting, `AGENT_LLM_MODEL`, in LM Studio, separate from the categorizer's `LLM_MODEL`.
+- **16.9** Evaluation:
+  - a committed golden set of synthetic questions with reference SQL, run against seeded synthetic data
+  - the metric is execution accuracy (result-set match)
+  - `make eval-agent` writes a JSON result file like §12.3
+  - the evaluation does not run in CI (§12.5)
+- **16.10** The UI gets an **Ask** tab. It renders the API response and nothing more (§2.3).
+
 ---
 
 ## Changelog
@@ -231,3 +255,4 @@ None for v1. Decided since the first draft: accounts always have an IBAN (§4.2a
 - **2026-10-10** — Removed the Income vs. expenses report (§11.1, §11.1a): the UI tab, the `/reports/income-expenses` endpoint and the `v_monthly_income_expenses` view.
 - **2026-10-10** — LLM concurrency default raised from 1 to 4 (§8.6).
 - **2026-10-11** — Top merchants take a date range and several accounts (§11.1, §11.1a, §11.1b); they no longer take a year and month.
+- **2026-10-10** — v2 text-to-SQL agent decided (§16): free SELECT over the schema behind a read-only role and sqlglot validation, multi-turn in-memory conversations, a separate model, LLM-chosen charts, golden-set evaluation.
