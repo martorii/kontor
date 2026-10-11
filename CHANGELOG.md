@@ -1,5 +1,59 @@
 # Changelog
 
+## [2.0.0](https://github.com/martorii/kontor/compare/kontor-v1.0.1...kontor-v2.0.0) (2026-10-11)
+
+
+### Features
+
+* add make deploy-main-locally ([0dc48ee](https://github.com/martorii/kontor/commit/0dc48eef9cc93646074c632c0d05afcfbe2985a1))
+* add make deploy-main-locally ([bfaccec](https://github.com/martorii/kontor/commit/bfaccec3fc3c9b837eccd16a473f509693cbb8b1))
+* agent API endpoints ([61de860](https://github.com/martorii/kontor/commit/61de860ef12edc34c8cdf04ff41296a3970359fe))
+* agent API endpoints ([59a8707](https://github.com/martorii/kontor/commit/59a8707ffccce911055c8ce18406c70a8efc77c8))
+* agent evaluation with a golden set ([53951fb](https://github.com/martorii/kontor/commit/53951fb48943c652f8d8878bac131ca69754f475))
+* agent evaluation with a golden set ([64b5741](https://github.com/martorii/kontor/commit/64b574127f387682a9bc4d846571e5d4ff85d606))
+* agent improvements measured with the golden set ([be7be25](https://github.com/martorii/kontor/commit/be7be250555cbc9662fe2fd93523acda24d9a579))
+* AGENT_LLM_REASONING_EFFORT, with thinking off by default ([b64db9c](https://github.com/martorii/kontor/commit/b64db9c9bde00a8e4c2e3916c807d7e28c8299d0))
+* Ask tab for the text-to-SQL agent ([1249dc0](https://github.com/martorii/kontor/commit/1249dc0483e03d935ed579cf33ebdcd9cd25e8ff))
+* Ask tab for the text-to-SQL agent ([b6b1bd1](https://github.com/martorii/kontor/commit/b6b1bd19f9f36a3257eb529bec4ce0b3dfa3e70e))
+* build deploy-main-locally from source ([e52be6b](https://github.com/martorii/kontor/commit/e52be6bda49fffc83ecfe188f3428775398c2264))
+* build deploy-main-locally from source ([633ea5e](https://github.com/martorii/kontor/commit/633ea5e703c4228c0616bd2ae30ad856c8adc0a9))
+* categories, accounts and date ranges in the agent context ([01a6586](https://github.com/martorii/kontor/commit/01a65865385723acc294b8696598111da1ce45b3))
+* column docs for the agent and a narrower set of relations ([45843a8](https://github.com/martorii/kontor/commit/45843a84f8008c0f965c67e1293e12096ea3b975))
+* default LLM concurrency to 4 ([52259fc](https://github.com/martorii/kontor/commit/52259fca796ee611ecd7bb67fb74ccf054d54c63))
+* default LLM concurrency to 4 ([f0d6423](https://github.com/martorii/kontor/commit/f0d642335499c119b33f6ca97c67a4902d958227))
+* LangGraph text-to-SQL agent ([277fef0](https://github.com/martorii/kontor/commit/277fef0b0e0e61adaca6029aa076929685b7d9e6))
+* LangGraph text-to-SQL agent ([940e2b3](https://github.com/martorii/kontor/commit/940e2b373be9310c97ed7a4faac61be1ec01986a))
+* re-run LLM tab for uncategorized transactions ([3b27466](https://github.com/martorii/kontor/commit/3b274665f427addb805544f80962c61dad2b94c6))
+* re-run LLM tab for uncategorized transactions ([c164be2](https://github.com/martorii/kontor/commit/c164be21b6cedff3d42f1137c34ab4c0bdbdc372))
+* read-only agent role and query executor ([ea148e0](https://github.com/martorii/kontor/commit/ea148e00ca9a68a7ff0acd4fa8ccc64f8154a241))
+* read-only agent role and query executor ([0fc9a35](https://github.com/martorii/kontor/commit/0fc9a352d1c6cd1d7898f5a608d603e19a21ce6e))
+* schema context for the agent ([3a08c89](https://github.com/martorii/kontor/commit/3a08c890575a060bfbb65ac11d68483ad6e174ce))
+* schema context for the agent ([809fd8c](https://github.com/martorii/kontor/commit/809fd8cfc5ba2e3565d181f0a7d9d4513508e40f))
+* show agent attempts and empty results in the Ask tab ([03a66d4](https://github.com/martorii/kontor/commit/03a66d4a5db675ebbdbb45bc260a8c0ba97a991d))
+* SQL validator for agent queries ([8c1322d](https://github.com/martorii/kontor/commit/8c1322d8c3142e1e2d35c11ef267a8f5b440863c))
+* SQL validator for agent queries ([a5e6b67](https://github.com/martorii/kontor/commit/a5e6b677fbc0c587836a344943799015577de16c))
+* top merchants for a date range and several accounts ([9d9342a](https://github.com/martorii/kontor/commit/9d9342aa8ad9e2bff79316d2a807b720eb12e985))
+* top merchants for a date range and several accounts ([b18a2f1](https://github.com/martorii/kontor/commit/b18a2f17447cd3e51c086e5440d8ed5149d0ffe9))
+* worked examples and a plan before the agent's SQL ([dc50730](https://github.com/martorii/kontor/commit/dc50730c4254bd7b2b7652a72baa0501c925c06d))
+
+
+### Bug Fixes
+
+* report LM Studio's reason for an error response ([6e4a9cc](https://github.com/martorii/kontor/commit/6e4a9ccbf34c2e351053a7abfde1d048d8c0344f))
+* sort bar charts by amount descending ([9fcb7e5](https://github.com/martorii/kontor/commit/9fcb7e5ad5ad3217081de39c215b525f51327c8e))
+* sort the monthly and top-merchants bar charts by amount descending ([3b1fd68](https://github.com/martorii/kontor/commit/3b1fd681eecfbf0cfa984566caf6ecf5bf789ca1))
+* treat untokenizable agent SQL as a failed attempt ([f9d2f78](https://github.com/martorii/kontor/commit/f9d2f78492e5f7e1dfc38ec56cea54c033b8dff8))
+
+
+### Documentation
+
+* add Step 30a to the plan ([9940c8e](https://github.com/martorii/kontor/commit/9940c8e677b04a5af3ae0fe96e2a00801d362591))
+* recommend qwen3.5-9b for the agent and tick Step 30a ([046610b](https://github.com/martorii/kontor/commit/046610b5409fc22b6216f4e6ea37f5053871a557))
+* v2 release notes for the agent ([5ab327c](https://github.com/martorii/kontor/commit/5ab327ced48e1019080f8dbf7d363eaeb76a2540))
+* v2 release notes for the agent ([66049b2](https://github.com/martorii/kontor/commit/66049b2a22b5e793c177efd72e99aa2e93a66ec8))
+* v2 text-to-SQL agent contract and plan ([7ada157](https://github.com/martorii/kontor/commit/7ada1578f07ec893f804a8a08cd5c1dddbbbe505))
+* v2 text-to-SQL agent contract and plan ([4b67469](https://github.com/martorii/kontor/commit/4b67469de22473e803c3daf11a3d132c1e88bf83))
+
 ## [1.0.1](https://github.com/martorii/kontor/compare/kontor-v1.0.0...kontor-v1.0.1) (2026-10-08)
 
 
