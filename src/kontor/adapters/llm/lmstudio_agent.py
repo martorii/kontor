@@ -7,6 +7,7 @@ from typing import Any
 
 import openai
 from openai import OpenAI
+from openai.types.shared import ReasoningEffort
 
 from kontor.adapters.llm.errors import status_error_detail
 from kontor.domain.agent import ChartSpec, FailedAttempt, SqlDraft, Summary, Turn
@@ -144,9 +145,13 @@ class LMStudioAgentLLM:
         timeout_seconds: float,
         api_key: str = "lm-studio",
         *,
+        reasoning_effort: ReasoningEffort = "none",
         client: OpenAI | None = None,
     ) -> None:
         self._model = model
+        # Thinking models (e.g. qwen3.5) put structured output into their reasoning and leave
+        # the content empty, so thinking is off unless a setting asks for it.
+        self._reasoning_effort: ReasoningEffort = reasoning_effort
         self._client = client or OpenAI(
             base_url=base_url, api_key=api_key, timeout=timeout_seconds, max_retries=0
         )
@@ -199,6 +204,7 @@ class LMStudioAgentLLM:
                     {"role": "user", "content": user},
                 ],
                 temperature=0,
+                reasoning_effort=self._reasoning_effort,
                 response_format={
                     "type": "json_schema",
                     "json_schema": {"name": name, "strict": True, "schema": schema},
@@ -210,9 +216,16 @@ class LMStudioAgentLLM:
             raise LLMUnavailableError(str(exc)) from exc
         except openai.APIStatusError as exc:
             raise LLMUnavailableError(status_error_detail(exc)) from exc
-        content = response.choices[0].message.content
-        if not content:
+        message = response.choices[0].message
+        if not message.content:
+            extra = message.model_extra or {}
+            if extra.get("reasoning_content") or extra.get("reasoning"):
+                raise LLMInvalidOutputError(
+                    "response has reasoning but no content; for a thinking model, "
+                    "set AGENT_LLM_REASONING_EFFORT=none"
+                )
             raise LLMInvalidOutputError("response has no content")
+        content = message.content
         return content
 
 

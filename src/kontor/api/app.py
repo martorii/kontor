@@ -144,6 +144,7 @@ def create_app(
             settings.agent_llm_model,
             settings.agent_llm_timeout_seconds,
             settings.agent_llm_api_key,
+            reasoning_effort=settings.agent_llm_reasoning_effort,
         )
     resolved_agent_llm: AgentLLM = agent_llm
     llm_step = LLMCategorizationStep(

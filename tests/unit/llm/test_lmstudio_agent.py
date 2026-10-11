@@ -207,3 +207,35 @@ def test_no_example_is_a_golden_question() -> None:
 
 def test_prompt_text_includes_the_examples() -> None:
     assert render_examples() in PROMPT_TEXT
+
+
+def test_thinking_is_off_by_default_and_configurable() -> None:
+    sent: list[dict[str, object]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json=completion('{"plan": "p", "sql": "SELECT 1"}'))
+
+    agent_with(httpx.MockTransport(handler)).generate_sql("q", [], "", [])
+    sdk = OpenAI(
+        base_url="http://lm.test/v1",
+        api_key="k",
+        max_retries=0,
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    LMStudioAgentLLM(
+        "http://lm.test/v1", "m", 1.0, reasoning_effort="low", client=sdk
+    ).generate_sql("q", [], "", [])
+
+    assert [body["reasoning_effort"] for body in sent] == ["none", "low"]
+
+
+def test_reasoning_without_content_points_at_the_setting() -> None:
+    body = completion("")
+    body["choices"][0]["message"]["reasoning_content"] = "thinking..."  # type: ignore[index]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=body)
+
+    with pytest.raises(LLMInvalidOutputError, match="AGENT_LLM_REASONING_EFFORT=none"):
+        agent_with(httpx.MockTransport(handler)).generate_sql("q", [], "", [])
