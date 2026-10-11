@@ -465,6 +465,10 @@ class SqlCategoryRepository:
         )
         return self._session.scalar(stmt) is not None
 
+    def exists(self, slug: str) -> bool:
+        stmt = select(models.Category.slug).where(models.Category.slug == slug)
+        return self._session.scalar(stmt) is not None
+
     def list_subcategories(self) -> Sequence[CategoryDef]:
         stmt = (
             select(models.Category)
@@ -537,13 +541,21 @@ class SqlReportRepository:
         return [CategorySpendingRow(**row._mapping) for row in result]
 
     def top_merchants(
-        self, date_from: date, date_to: date, account_ids: Sequence[int] | None, limit: int
+        self,
+        date_from: date,
+        date_to: date,
+        account_ids: Sequence[int] | None,
+        category: str | None,
+        limit: int,
     ) -> list[MerchantRow]:
         sql = "booking_date BETWEEN :date_from AND :date_to"
         params: dict[str, object] = {"date_from": date_from, "date_to": date_to, "limit": limit}
         if account_ids:
             sql += " AND account_id = ANY(:account_ids)"
             params["account_ids"] = list(account_ids)
+        if category is not None:
+            sql += " AND (top_slug = :category OR sub_slug = :category)"
+            params["category"] = category
         result = self._session.execute(
             text(
                 "SELECT currency, counterparty_normalized AS merchant, SUM(spent) AS spent, "

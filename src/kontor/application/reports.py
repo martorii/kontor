@@ -4,7 +4,11 @@ from datetime import date
 from decimal import Decimal
 from typing import Protocol
 
-from kontor.domain.errors import InvalidDateRangeError, MixedCurrenciesError
+from kontor.domain.errors import (
+    InvalidCategoryError,
+    InvalidDateRangeError,
+    MixedCurrenciesError,
+)
 from kontor.domain.reports import (
     CategorySpendingRow,
     CategoryTotal,
@@ -27,6 +31,7 @@ class Currency(Protocol):
 
 
 ZERO = Decimal(0)
+UNCATEGORIZED = "uncategorized"
 RATIO = Decimal("0.0001")
 
 
@@ -139,9 +144,14 @@ class ReportService:
         date_to: date | None,
         account_ids: Sequence[int] | None,
         limit: int,
+        category: str | None = None,
     ) -> TopMerchants:
-        """A missing bound defaults to the first or last booking date available."""
+        """A missing bound defaults to the first or last booking date available. A top-level
+        `category` includes its subcategories, and `uncategorized` selects the uncategorized
+        bucket (CONTRACT §11.1b)."""
         with self._uow_factory() as uow:
+            if category not in (None, UNCATEGORIZED) and not uow.categories.exists(category):
+                raise InvalidCategoryError(f"'{category}' is not a category")
             bounds = uow.reports.date_bounds(account_ids)
             if bounds is None:
                 return TopMerchants(date_from=None, date_to=None, currency=None, merchants=())
@@ -149,7 +159,7 @@ class ReportService:
             end = date_to or bounds.last
             if start > end:
                 raise InvalidDateRangeError("the start date is after the end date")
-            rows = uow.reports.top_merchants(start, end, account_ids, limit)
+            rows = uow.reports.top_merchants(start, end, account_ids, category, limit)
         return TopMerchants(
             date_from=start,
             date_to=end,

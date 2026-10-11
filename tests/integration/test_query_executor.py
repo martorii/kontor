@@ -81,6 +81,15 @@ def test_tables_and_views_are_readable(executor: PostgresQueryExecutor, account_
     assert flows.rows == ()
 
 
+@pytest.mark.parametrize(
+    "relation",
+    ["imports", "categorization_events", "v_monthly_category_spending", "v_merchant_spending"],
+)
+def test_hidden_relations_are_not_readable(executor: PostgresQueryExecutor, relation: str) -> None:
+    with pytest.raises(QueryExecutionError, match="permission denied"):
+        executor.execute(f"SELECT * FROM {relation}")
+
+
 def test_long_query_hits_the_timeout(executor: PostgresQueryExecutor) -> None:
     with pytest.raises(QueryTimeoutError):
         executor.execute("SELECT pg_sleep(20)")

@@ -149,7 +149,7 @@ A decision changes only when the developer explicitly decides so. Every change i
 - **11.1** v1 contains these views:
   1. **Monthly overview** — spending per top-level category per month, with drill-down to subcategories
   2. **Year view / comparison** — totals per category for a year, compared with the previous year
-  3. **Top merchants** — spending by normalized counterparty, for a date range and one or more accounts
+  3. **Top merchants** — spending by normalized counterparty, for a date range, one or more accounts, and optionally a category or subcategory
   4. **Transaction explorer** — filterable by account, date range, category, text, and categorization source
   5. **Review tab** — uncategorized transactions and LLM suggestions, assigned manually
   6. **Import history** — each upload with its counts and status
@@ -162,6 +162,8 @@ A decision changes only when the developer explicitly decides so. Every change i
   - `/reports/top-merchants` takes `date_from` and `date_to` (inclusive, by booking date) and a repeatable `account_ids`. No accounts means all accounts.
   - A missing bound defaults to the first or last booking date available for the selected accounts. `/reports/date-bounds` returns those dates.
   - A start date after the end date returns 422.
+  - An optional `category` narrows the report: a top-level slug includes its subcategories, a subcategory slug matches only itself, and `uncategorized` selects the uncategorized bucket. An unknown slug returns 422.
+  - The UI offers a Category dropdown and a Subcategory dropdown that follows it; both default to all.
 - **11.2** The UI also lets the user view and edit accounts.
 - **11.3** Aggregations live in **FastAPI endpoints backed by SQL views**, not in Streamlit. The views are tested with pytest against Postgres.
 - **11.4** Budgets, recurring-payment detection, and running balances are not part of v1.
@@ -267,3 +269,4 @@ For v2 (§16), released as 2.0.0:
 - **2026-10-10** — Agent evaluation decided (§16.9): golden set on synthetic data in a throwaway container, scoring rules, and the empty-result rate.
 - **2026-10-11** — The agent reads only `v_flows`, `transactions`, `accounts` and `categories` (§16.2); column comments document them.
 - **2026-10-11** — v2.0.0: §15 lists the known agent issues left open at release.
+- **2026-10-11** — Top merchants can be filtered by category or subcategory, including `uncategorized` (§11.1, §11.1b).
