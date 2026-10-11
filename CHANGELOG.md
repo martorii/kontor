@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.0](https://github.com/martorii/kontor/compare/kontor-v2.0.0...kontor-v2.1.0) (2026-10-11)
+
+
+### Features
+
+* filter top merchants by category and subcategory ([ef85998](https://github.com/martorii/kontor/commit/ef859982dc22c64611a65c8578ee0286b8079888))
+* filter top merchants by category and subcategory ([2434634](https://github.com/martorii/kontor/commit/2434634dc5784098adae890587261d470df92e51))
+
 ## [2.0.0](https://github.com/martorii/kontor/compare/kontor-v1.0.1...kontor-v2.0.0) (2026-10-11)
 
 
