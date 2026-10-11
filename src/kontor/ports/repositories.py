@@ -102,8 +102,15 @@ class ReportRepository(Protocol):
     ) -> list[CategorySpendingRow]: ...
 
     def top_merchants(
-        self, date_from: date, date_to: date, account_ids: Sequence[int] | None, limit: int
-    ) -> list[MerchantRow]: ...
+        self,
+        date_from: date,
+        date_to: date,
+        account_ids: Sequence[int] | None,
+        category: str | None,
+        limit: int,
+    ) -> list[MerchantRow]:
+        """A top-level `category` includes its subcategories; `uncategorized` is its own slug."""
+        ...
 
     def date_bounds(self, account_ids: Sequence[int] | None) -> DateBounds | None:
         """First and last booking date, or None if there are no transactions."""
@@ -113,6 +120,10 @@ class ReportRepository(Protocol):
 class CategoryRepository(Protocol):
     def is_assignable(self, slug: str) -> bool:
         """True if the category exists and is a subcategory."""
+        ...
+
+    def exists(self, slug: str) -> bool:
+        """True if the category exists, top-level or subcategory."""
         ...
 
     def list_subcategories(self) -> Sequence[CategoryDef]:

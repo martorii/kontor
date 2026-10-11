@@ -132,7 +132,12 @@ class ApiClient:
         return self.report("date-bounds", account_ids=account_ids)
 
     def top_merchants_report(
-        self, date_from: date, date_to: date, account_ids: list[int], limit: int
+        self,
+        date_from: date,
+        date_to: date,
+        account_ids: list[int],
+        limit: int,
+        category: str | None = None,
     ) -> dict[str, Any]:
         return self.report(
             "top-merchants",
@@ -140,6 +145,7 @@ class ApiClient:
             date_to=date_to.isoformat(),
             account_ids=account_ids,
             limit=limit,
+            category=category,
         )
 
     def ask(self, question: str, conversation_id: str | None) -> dict[str, Any]:

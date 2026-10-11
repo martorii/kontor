@@ -54,6 +54,9 @@ def top_merchants(
     date_from: date | None = None,
     date_to: date | None = None,
     account_ids: AccountIds = None,
+    category: str | None = None,
     limit: Annotated[int, Query(ge=1, le=100)] = 10,
 ) -> TopMerchants:
-    return service.top_merchants(date_from, date_to, account_ids, limit)
+    """A top-level `category` includes its subcategories; `uncategorized` selects the
+    uncategorized bucket."""
+    return service.top_merchants(date_from, date_to, account_ids, limit, category)

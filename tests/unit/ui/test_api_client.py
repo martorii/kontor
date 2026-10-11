@@ -115,6 +115,20 @@ def test_top_merchants_repeats_the_account_parameter() -> None:
     assert seen["accounts"] == ["3", "4"]
 
 
+def test_top_merchants_sends_the_category_only_when_set() -> None:
+    seen: list[str | None] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request.url.params.get("category"))
+        return httpx.Response(200, json={})
+
+    client = client_with(httpx.MockTransport(handler))
+    client.top_merchants_report(date(2026, 1, 1), date(2026, 3, 31), [], 5, "food.groceries")
+    client.top_merchants_report(date(2026, 1, 1), date(2026, 3, 31), [], 5, None)
+
+    assert seen == ["food.groceries", None]
+
+
 def test_set_category_puts_the_slug_for_the_transaction() -> None:
     seen: dict[str, object] = {}
 

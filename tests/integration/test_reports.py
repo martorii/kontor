@@ -182,6 +182,61 @@ def test_top_merchants_with_one_open_bound(make_client: MakeClient) -> None:
     assert [m["merchant"] for m in top["merchants"]] == ["REWE MARKT"]
 
 
+def test_top_merchants_by_top_level_category_include_its_subcategories(
+    make_client: MakeClient,
+) -> None:
+    client = make_client(RULES)
+    seed(client)
+
+    top = client.get(
+        "/reports/top-merchants",
+        params={"date_from": "2026-01-01", "date_to": "2026-12-31", "category": "food"},
+    ).json()
+
+    assert [(m["merchant"], money(m["total"])) for m in top["merchants"]] == [
+        ("REWE MARKT", Decimal("68.00")),
+        ("CAFE CENTRAL", Decimal("5.00")),
+    ]
+
+
+def test_top_merchants_by_subcategory(make_client: MakeClient) -> None:
+    client = make_client(RULES)
+    seed(client)
+
+    top = client.get(
+        "/reports/top-merchants",
+        params={"date_from": "2026-01-01", "date_to": "2026-12-31", "category": "food.restaurants"},
+    ).json()
+
+    assert [(m["merchant"], money(m["total"])) for m in top["merchants"]] == [
+        ("CAFE CENTRAL", Decimal("5.00"))
+    ]
+
+
+def test_top_merchants_for_uncategorized(make_client: MakeClient) -> None:
+    client = make_client(RULES)
+    seed(client)
+
+    top = client.get(
+        "/reports/top-merchants",
+        params={"date_from": "2026-01-01", "date_to": "2026-12-31", "category": "uncategorized"},
+    ).json()
+
+    assert [(m["merchant"], money(m["total"])) for m in top["merchants"]] == [
+        ("MYSTERY SHOP", Decimal("7.00"))
+    ]
+
+
+def test_top_merchants_reject_an_unknown_category(make_client: MakeClient) -> None:
+    client = make_client(RULES)
+    seed(client)
+
+    response = client.get("/reports/top-merchants", params={"category": "nope"})
+
+    assert response.status_code == 422
+    assert response.json()["error"] == "InvalidCategoryError"
+
+
 def test_top_merchants_rejects_a_reversed_range(make_client: MakeClient) -> None:
     client = make_client(RULES)
     seed(client)
