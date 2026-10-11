@@ -209,6 +209,11 @@ A decision changes only when the developer explicitly decides so. Every change i
 
 None for v1. Decided since the first draft: accounts always have an IBAN (§4.2a), and the repository is public.
 
+For v2 (§16), released as 2.0.0:
+
+- **15.1** One of the agent's worked examples filters on the account name "Girokonto", which a model can copy for a question about another account. Renaming it to a fictional account is the likely fix; it changes the prompt hash, so measure it with `make eval-agent`.
+- **15.2** The agent's date ranges sit at the end of a long system prompt, and some models (Arctic-Text2SQL-R1) ignore them. Moving them next to the question is untested.
+
 ## 16. Text-to-SQL agent (v2)
 
 - **16.1** The agent answers questions about the user's finances by writing and running its own SQL. It uses **LangGraph**, and its nodes call LM Studio through the existing `openai` client. It ships as **v2.0.0**.
@@ -261,3 +266,4 @@ None for v1. Decided since the first draft: accounts always have an IBAN (§4.2a
 - **2026-10-10** — Categorizer LLM settings renamed from `LLM_*` to `CATEGORIZER_LLM_*` (breaking: old names are no longer read). `CATEGORIZER_LLM_BASE_URL` and `CATEGORIZER_LLM_MODEL` are required; the API refuses to start without them. The agent gets its own `AGENT_LLM_BASE_URL` and `AGENT_LLM_MODEL`, also required (§16.8).
 - **2026-10-10** — Agent evaluation decided (§16.9): golden set on synthetic data in a throwaway container, scoring rules, and the empty-result rate.
 - **2026-10-11** — The agent reads only `v_flows`, `transactions`, `accounts` and `categories` (§16.2); column comments document them.
+- **2026-10-11** — v2.0.0: §15 lists the known agent issues left open at release.
