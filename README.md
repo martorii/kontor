@@ -40,7 +40,7 @@ Edit `.env`:
 - `DATABASE_URL`: only used for runs on the host (tests, Alembic). Keep the password in sync.
 - `CATEGORIZER_LLM_MODEL`: the model id from step 2.
 - `CATEGORIZER_LLM_BASE_URL`: where the containers reach LM Studio. The example value, `http://host.docker.internal:1234/v1`, is right unless you changed LM Studio's port. The API refuses to start if either of these two is missing.
-- `AGENT_LLM_MODEL` and `AGENT_LLM_BASE_URL`: the model the text-to-SQL agent uses, and where it is served. Like the categorizer's, both are required. A model tuned for code writes better SQL than a small chat model; it can be a different model in the same LM Studio.
+- `AGENT_LLM_MODEL` and `AGENT_LLM_BASE_URL`: the model the text-to-SQL agent uses, and where it is served. Like the categorizer's, both are required. On the golden set (`make eval-agent`), `qwen/qwen3.5-9b` answers 85% of the questions correctly at about 19 seconds each, and `google_gemma-4-e2b-it` 70% at about 5 seconds. It can be a different model from the categorizer's, in the same LM Studio. Load it with a context length of at least 10,000 tokens: the agent's prompt does not fit the small default. Thinking is turned off (`AGENT_LLM_REASONING_EFFORT=none`), because thinking models otherwise return empty answers.
 - `API_PORT`, `UI_PORT`: change only if the defaults clash.
 
 ### 4. Create your rules

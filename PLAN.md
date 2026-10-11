@@ -156,7 +156,7 @@ v1 (Steps 01–22) is complete. Its plan lives in the git history of this file.
 - **Pass gate** — `make eval-agent` runs locally and writes a result file with every metric filled in.
 
 ### Step 30a — Agent improvements
-- [ ] **Scope** (one commit per block, and one `make eval-agent` run after each)
+- [x] **Scope** (one commit per block, and one `make eval-agent` run after each)
   1. the category tree, the account names, and literal date ranges in the agent's context, read per question through a `ReferenceValues` port
   2. few-shot question → SQL examples (none from the golden set) and a `plan` field before the SQL
   3. column comments through a migration, shown in the schema text; `kontor_agent` loses access to `imports` and `categorization_events` (CONTRACT §16.2)
