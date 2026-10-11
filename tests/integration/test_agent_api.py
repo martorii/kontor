@@ -33,7 +33,9 @@ def test_answered_returns_sql_rows_and_chart(
     assert body["chart"] == {"type": "bar", "x": "day", "y": "amount"}
     assert body["attempts"] == 1
     assert body["last_error"] is None
-    assert body["trace"] == [{"attempt": 1, "sql": VALUES_SQL, "error": None, "rows": 1}]
+    assert body["trace"] == [
+        {"attempt": 1, "plan": None, "sql": VALUES_SQL, "error": None, "rows": 1}
+    ]
     assert body["conversation_id"]
 
 
@@ -75,6 +77,7 @@ def test_postgres_error_is_retried(client: TestClient, fake_agent_llm: FakeAgent
     assert "nope" in failed["error"]
     assert answered == {
         "attempt": 2,
+        "plan": None,
         "sql": "SELECT COUNT(*) AS n FROM v_flows",
         "error": None,
         "rows": 1,

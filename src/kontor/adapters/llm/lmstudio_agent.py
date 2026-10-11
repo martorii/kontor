@@ -2,14 +2,15 @@
 
 import json
 from collections.abc import Sequence
-from datetime import date
 from decimal import Decimal
 from typing import Any
 
 import openai
 from openai import OpenAI
+from openai.types.shared import ReasoningEffort
 
-from kontor.domain.agent import ChartSpec, FailedAttempt, Summary, Turn
+from kontor.adapters.llm.errors import status_error_detail
+from kontor.domain.agent import ChartSpec, FailedAttempt, SqlDraft, Summary, Turn
 from kontor.domain.errors import LLMInvalidOutputError, LLMTimeoutError, LLMUnavailableError
 
 SQL_SYSTEM_PROMPT = """\
@@ -17,13 +18,83 @@ You write PostgreSQL queries that answer questions about one person's bank trans
 
 Rules:
 - Write exactly one read-only SELECT statement (WITH and UNION are fine).
-- Use only the tables, views and columns listed in the schema below.
-- Follow the notes on what the data means, especially the signs of amounts and the views
-  to prefer for spending and income.
-- Give result columns short, readable names with AS.
+- Use only the tables, views and columns listed in the schema below, with the exact column
+  names of the relation you query.
+- Prefer the view v_flows. It already has the category (top_slug, top_name, sub_slug,
+  sub_name), the flow and the date parts, so you never need to join categories.
+- Spending is SUM(-amount) over flow = 'expense'; income is SUM(amount) over flow = 'income'.
+  Never SUM(amount) for spending: outflows are negative.
+- Filter categories on sub_slug or top_slug, using only the slugs in the Categories section.
+- For relative periods, copy the date range from the Dates section.
+- Return only the columns the question asks for, with short names (AS).
 - Order results meaningfully, and add LIMIT for "top" questions.
-- Answer with JSON: {"sql": "<the query>"}. No explanation, no comments in the SQL.
+- First write a one-sentence plan (relation, filters, sign, period), then the query.
+- Answer with JSON: {"plan": "...", "sql": "..."}. No comments in the SQL.
+
 """
+
+
+# Worked examples in the house style: question, plan, SQL. None is a golden-set question.
+# Their dates are made up; the prompt tells the model to take its own from the Dates section.
+SQL_EXAMPLES: list[tuple[str, str, str]] = [
+    (
+        "How much did I spend at the pharmacy last month?",
+        "v_flows, sub_slug health.pharmacy, SUM(-amount), last month range",
+        "SELECT SUM(-amount) AS spent FROM v_flows WHERE sub_slug = 'health.pharmacy' "
+        "AND booking_date >= '2030-04-01' AND booking_date < '2030-05-01'",
+    ),
+    (
+        "What did I spend per top-level category this year?",
+        "v_flows, expense flow, SUM(-amount) grouped by top_name, this year range",
+        "SELECT top_name AS category, SUM(-amount) AS spent FROM v_flows "
+        "WHERE flow = 'expense' AND booking_date >= '2030-01-01' AND booking_date < '2031-01-01' "
+        "GROUP BY top_name ORDER BY spent DESC",
+    ),
+    (
+        "How much salary did I receive over the last 6 complete months?",
+        "v_flows, sub_slug income.salary, SUM(amount) because income is positive, "
+        "last 6 complete months range",
+        "SELECT SUM(amount) AS received FROM v_flows WHERE sub_slug = 'income.salary' "
+        "AND booking_date >= '2029-11-01' AND booking_date < '2030-05-01'",
+    ),
+    (
+        "Which 3 merchants did I pay most for subscriptions last year?",
+        "v_flows, sub_slug leisure.subscriptions, SUM(-amount) per counterparty_normalized, "
+        "top 3, last year range",
+        "SELECT counterparty_normalized AS merchant, SUM(-amount) AS spent FROM v_flows "
+        "WHERE sub_slug = 'leisure.subscriptions' "
+        "AND booking_date >= '2029-01-01' AND booking_date < '2030-01-01' "
+        "GROUP BY counterparty_normalized ORDER BY spent DESC LIMIT 3",
+    ),
+    (
+        "How many utility payments came from the Girokonto this year?",
+        "v_flows joined to accounts by account_id, account name Girokonto, "
+        "sub_slug housing.utilities, COUNT, this year range",
+        "SELECT COUNT(*) AS payments FROM v_flows AS f JOIN accounts AS a ON a.id = f.account_id "
+        "WHERE a.name = 'Girokonto' AND f.sub_slug = 'housing.utilities' "
+        "AND f.booking_date >= '2030-01-01' AND f.booking_date < '2031-01-01'",
+    ),
+    (
+        "What was my average monthly spending on daycare over the last 12 complete months?",
+        "v_flows, sub_slug kids.daycare, monthly SUM(-amount), then AVG, "
+        "last 12 complete months range",
+        "SELECT AVG(spent) AS average_per_month FROM (SELECT year, month, SUM(-amount) AS spent "
+        "FROM v_flows WHERE sub_slug = 'kids.daycare' "
+        "AND booking_date >= '2029-05-01' AND booking_date < '2030-05-01' "
+        "GROUP BY year, month) AS monthly",
+    ),
+]
+
+
+def render_examples() -> str:
+    blocks = [
+        f"Question: {question}\n{json.dumps({'plan': plan, 'sql': sql})}"
+        for question, plan, sql in SQL_EXAMPLES
+    ]
+    return "Examples (their dates are made up; take yours from the Dates section):\n\n" + (
+        "\n\n".join(blocks)
+    )
+
 
 SUMMARY_SYSTEM_PROMPT = """\
 You answer a question about one person's bank transactions from the result of a SQL query.
@@ -41,8 +112,8 @@ Rules:
 
 SQL_SCHEMA: dict[str, Any] = {
     "type": "object",
-    "properties": {"sql": {"type": "string"}},
-    "required": ["sql"],
+    "properties": {"plan": {"type": "string"}, "sql": {"type": "string"}},
+    "required": ["plan", "sql"],
     "additionalProperties": False,
 }
 
@@ -74,9 +145,13 @@ class LMStudioAgentLLM:
         timeout_seconds: float,
         api_key: str = "lm-studio",
         *,
+        reasoning_effort: ReasoningEffort = "none",
         client: OpenAI | None = None,
     ) -> None:
         self._model = model
+        # Thinking models (e.g. qwen3.5) put structured output into their reasoning and leave
+        # the content empty, so thinking is off unless a setting asks for it.
+        self._reasoning_effort: ReasoningEffort = reasoning_effort
         self._client = client or OpenAI(
             base_url=base_url, api_key=api_key, timeout=timeout_seconds, max_retries=0
         )
@@ -95,10 +170,10 @@ class LMStudioAgentLLM:
         history: Sequence[Turn],
         context: str,
         failed_attempts: Sequence[FailedAttempt],
-    ) -> str:
+    ) -> SqlDraft:
         content = self._complete(
-            f"{SQL_SYSTEM_PROMPT}\n{context}",
-            render_sql_request(question, history, failed_attempts, date.today()),
+            f"{SQL_SYSTEM_PROMPT}\n{render_examples()}\n\n{context}",
+            render_sql_request(question, history, failed_attempts),
             "sql_query",
             SQL_SCHEMA,
         )
@@ -129,6 +204,7 @@ class LMStudioAgentLLM:
                     {"role": "user", "content": user},
                 ],
                 temperature=0,
+                reasoning_effort=self._reasoning_effort,
                 response_format={
                     "type": "json_schema",
                     "json_schema": {"name": name, "strict": True, "schema": schema},
@@ -139,10 +215,17 @@ class LMStudioAgentLLM:
         except openai.APIConnectionError as exc:
             raise LLMUnavailableError(str(exc)) from exc
         except openai.APIStatusError as exc:
-            raise LLMUnavailableError(f"LM Studio returned HTTP {exc.status_code}") from exc
-        content = response.choices[0].message.content
-        if not content:
+            raise LLMUnavailableError(status_error_detail(exc)) from exc
+        message = response.choices[0].message
+        if not message.content:
+            extra = message.model_extra or {}
+            if extra.get("reasoning_content") or extra.get("reasoning"):
+                raise LLMInvalidOutputError(
+                    "response has reasoning but no content; for a thinking model, "
+                    "set AGENT_LLM_REASONING_EFFORT=none"
+                )
             raise LLMInvalidOutputError("response has no content")
+        content = message.content
         return content
 
 
@@ -150,9 +233,9 @@ def render_sql_request(
     question: str,
     history: Sequence[Turn],
     failed_attempts: Sequence[FailedAttempt],
-    today: date,
 ) -> str:
-    parts = [f"Today is {today.isoformat()}."]
+    """The user message. Today's date and the date ranges are in the context."""
+    parts: list[str] = []
     if history:
         earlier = "\n\n".join(
             f"Question: {turn.question}\nSQL: {turn.sql or '(none)'}\nAnswer: {turn.answer}"
@@ -192,14 +275,17 @@ def _cell(value: object) -> str:
     return str(value)
 
 
-def parse_sql_answer(content: str) -> str:
+def parse_sql_answer(content: str) -> SqlDraft:
     try:
-        sql = json.loads(content)["sql"]
-    except (ValueError, KeyError, TypeError) as exc:
+        data = json.loads(content)
+        sql = data["sql"]
+        plan = data.get("plan")
+    except (ValueError, KeyError, TypeError, AttributeError) as exc:
         raise LLMInvalidOutputError("answer is not the expected JSON") from exc
     if not isinstance(sql, str) or not sql.strip():
         raise LLMInvalidOutputError("answer has no SQL")
-    return sql.strip()
+    plan = plan.strip() if isinstance(plan, str) and plan.strip() else None
+    return SqlDraft(sql.strip(), plan)
 
 
 def parse_summary_answer(content: str) -> Summary:
@@ -224,10 +310,11 @@ def _prompt_text() -> str:
         "QUESTION",
         [Turn("EARLIER", "SELECT 1", "ANSWER")],
         [FailedAttempt("SELECT 2", "ERROR")],
-        date(2000, 1, 1),
     )
     sample_summary = render_summary_request("QUESTION", "SELECT 1", ["a"], [[1]], True)
-    return "\n---\n".join([SQL_SYSTEM_PROMPT, SUMMARY_SYSTEM_PROMPT, sample_sql, sample_summary])
+    return "\n---\n".join(
+        [SQL_SYSTEM_PROMPT, render_examples(), SUMMARY_SYSTEM_PROMPT, sample_sql, sample_summary]
+    )
 
 
 PROMPT_TEXT = _prompt_text()

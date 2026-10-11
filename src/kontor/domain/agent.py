@@ -37,11 +37,20 @@ class Turn:
 
 
 @dataclass(frozen=True, slots=True)
+class SqlDraft:
+    """The model's query, with the short plan it wrote before it (shown to the user, logged)."""
+
+    sql: str
+    plan: str | None = None
+
+
+@dataclass(frozen=True, slots=True)
 class FailedAttempt:
     """SQL that failed validation or execution, or None when the model output was unusable."""
 
     sql: str | None
     error: str
+    plan: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,6 +61,7 @@ class AttemptRecord:
     sql: str | None
     error: str | None
     rows: int | None
+    plan: str | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,5 +1,4 @@
 import json
-from datetime import date
 from decimal import Decimal
 
 import httpx2 as httpx
@@ -8,14 +7,18 @@ from openai import OpenAI
 
 from kontor.adapters.llm.lmstudio_agent import (
     PROMPT_TEXT,
+    SQL_EXAMPLES,
     SQL_SYSTEM_PROMPT,
     LMStudioAgentLLM,
     parse_sql_answer,
     parse_summary_answer,
+    render_examples,
     render_sql_request,
     render_summary_request,
 )
-from kontor.domain.agent import ChartSpec, FailedAttempt, Summary, Turn
+from kontor.agent_eval_cli import DEFAULT_GOLDEN, load_golden
+from kontor.application.sql_validator import validate_query
+from kontor.domain.agent import ChartSpec, FailedAttempt, SqlDraft, Summary, Turn
 from kontor.domain.errors import LLMInvalidOutputError, LLMTimeoutError, LLMUnavailableError
 
 
@@ -50,14 +53,14 @@ def test_generate_sql_sends_the_context_and_parses_the_answer() -> None:
 
     def handler(request: httpx.Request) -> httpx.Response:
         sent.append(json.loads(request.content))
-        return httpx.Response(200, json=completion('{"sql": " SELECT 1 "}'))
+        return httpx.Response(200, json=completion('{"plan": " p ", "sql": " SELECT 1 "}'))
 
-    sql = agent_with(httpx.MockTransport(handler)).generate_sql("q?", [], "CONTEXT", [])
+    draft = agent_with(httpx.MockTransport(handler)).generate_sql("q?", [], "CONTEXT", [])
 
-    assert sql == "SELECT 1"
+    assert draft == SqlDraft("SELECT 1", "p")
     messages = sent[0]["messages"]
     assert isinstance(messages, list)
-    assert messages[0]["content"] == f"{SQL_SYSTEM_PROMPT}\nCONTEXT"
+    assert messages[0]["content"] == f"{SQL_SYSTEM_PROMPT}\n{render_examples()}\n\nCONTEXT"
     assert "Question: q?" in messages[1]["content"]
     assert sent[0]["temperature"] == 0
 
@@ -131,10 +134,9 @@ def test_sql_request_holds_history_and_failed_attempts() -> None:
         "And February?",
         [Turn("January?", "SELECT 1", "120.50")],
         [FailedAttempt("SELECT nope", 'column "nope" does not exist'), FailedAttempt(None, "bad")],
-        date(2026, 3, 1),
     )
 
-    assert "Today is 2026-03-01." in text
+    assert "Today is" not in text  # the dates are in the context
     assert "Question: January?\nSQL: SELECT 1\nAnswer: 120.50" in text
     assert text.index("January?") < text.index("Question: And February?")
     assert 'SQL: SELECT nope\nError: column "nope" does not exist' in text
@@ -142,9 +144,9 @@ def test_sql_request_holds_history_and_failed_attempts() -> None:
 
 
 def test_sql_request_without_history_or_failures_is_just_the_question() -> None:
-    text = render_sql_request("q?", [], [], date(2026, 3, 1))
+    text = render_sql_request("q?", [], [])
 
-    assert text == "Today is 2026-03-01.\n\nQuestion: q?"
+    assert text == "Question: q?"
 
 
 def test_summary_request_renders_rows_and_truncation() -> None:
@@ -160,3 +162,80 @@ def test_prompt_text_covers_prompts_and_templates() -> None:
     assert SQL_SYSTEM_PROMPT in PROMPT_TEXT
     assert "Earlier in this conversation" in PROMPT_TEXT
     assert "Only the first" in PROMPT_TEXT
+
+
+@pytest.mark.parametrize(
+    ("body", "detail"),
+    [
+        (
+            {"error": "The number of tokens to keep exceeds the context length"},
+            "LM Studio returned HTTP 400: The number of tokens to keep exceeds the context length",
+        ),
+        (
+            {"error": {"message": "model not loaded"}},
+            "LM Studio returned HTTP 400: model not loaded",
+        ),
+        ({}, "LM Studio returned HTTP 400"),
+    ],
+)
+def test_error_responses_carry_lm_studios_reason(body: dict[str, object], detail: str) -> None:
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(400, json=body)
+
+    with pytest.raises(LLMUnavailableError) as excinfo:
+        agent_with(httpx.MockTransport(handler)).generate_sql("q", [], "", [])
+
+    assert str(excinfo.value) == detail
+
+
+def test_plan_is_optional_in_the_parsed_answer() -> None:
+    assert parse_sql_answer('{"sql": "SELECT 1"}') == SqlDraft("SELECT 1", None)
+    assert parse_sql_answer('{"plan": "  ", "sql": "SELECT 1"}') == SqlDraft("SELECT 1", None)
+
+
+@pytest.mark.parametrize(("question", "plan", "sql"), SQL_EXAMPLES)
+def test_every_example_passes_the_validator(question: str, plan: str, sql: str) -> None:
+    validate_query(sql, frozenset({"v_flows", "accounts"}))
+    assert plan
+
+
+def test_no_example_is_a_golden_question() -> None:
+    golden = {item.question for item in load_golden(DEFAULT_GOLDEN)}
+
+    assert golden.isdisjoint(question for question, _, _ in SQL_EXAMPLES)
+
+
+def test_prompt_text_includes_the_examples() -> None:
+    assert render_examples() in PROMPT_TEXT
+
+
+def test_thinking_is_off_by_default_and_configurable() -> None:
+    sent: list[dict[str, object]] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        sent.append(json.loads(request.content))
+        return httpx.Response(200, json=completion('{"plan": "p", "sql": "SELECT 1"}'))
+
+    agent_with(httpx.MockTransport(handler)).generate_sql("q", [], "", [])
+    sdk = OpenAI(
+        base_url="http://lm.test/v1",
+        api_key="k",
+        max_retries=0,
+        http_client=httpx.Client(transport=httpx.MockTransport(handler)),
+    )
+    LMStudioAgentLLM(
+        "http://lm.test/v1", "m", 1.0, reasoning_effort="low", client=sdk
+    ).generate_sql("q", [], "", [])
+
+    assert [body["reasoning_effort"] for body in sent] == ["none", "low"]
+
+
+def test_reasoning_without_content_points_at_the_setting() -> None:
+    body = completion("")
+    body["choices"][0]["message"]["reasoning_content"] = "thinking..."  # type: ignore[index]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json=body)
+
+    with pytest.raises(LLMInvalidOutputError, match="AGENT_LLM_REASONING_EFFORT=none"):
+        agent_with(httpx.MockTransport(handler)).generate_sql("q", [], "", [])

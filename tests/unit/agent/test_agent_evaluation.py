@@ -19,6 +19,7 @@ from kontor.application.agent_evaluation import (
 )
 from kontor.domain.agent import NO_CHART, Summary
 from kontor.domain.query import QueryResult
+from kontor.domain.reference import ReferenceValues
 from kontor.domain.schema import Column, Relation, SchemaInfo
 
 
@@ -133,6 +134,11 @@ def test_metrics_of_nothing() -> None:
     assert compute_metrics([]).questions == 0
 
 
+class StaticReference:
+    def load(self) -> ReferenceValues:
+        return ReferenceValues((), ())
+
+
 class FakeExecutor:
     def __init__(self, results: dict[str, QueryResult]) -> None:
         self.results = results
@@ -162,6 +168,7 @@ def test_evaluate_agent_scores_each_question_in_a_fresh_conversation() -> None:
         executor,
         SCHEMA,
         "notes",
+        StaticReference(),
         ConversationStore(10, timedelta(hours=1)),
         max_retries=0,
         summary_rows=10,

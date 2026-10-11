@@ -114,6 +114,7 @@ def test_agent_defaults_match_the_contract() -> None:
     assert settings.agent_summary_rows == 50
     assert settings.agent_max_turns == 10
     assert settings.agent_conversation_ttl_minutes == 60
+    assert settings.agent_llm_reasoning_effort == "none"
 
 
 @pytest.mark.parametrize(

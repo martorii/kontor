@@ -21,6 +21,7 @@ from alembic.config import Config
 from sqlalchemy import Engine, create_engine, text
 
 from kontor.adapters.db.query_executor import PostgresQueryExecutor
+from kontor.adapters.db.reference_values import PostgresReferenceValues
 from kontor.adapters.db.schema_introspector import PostgresSchemaIntrospector
 from kontor.adapters.llm.lmstudio_agent import LMStudioAgentLLM
 from kontor.agent_eval_seed import seed
@@ -92,6 +93,7 @@ def run(golden_path: Path, settings: Settings) -> int:
         settings.agent_llm_model,
         settings.agent_llm_timeout_seconds,
         settings.agent_llm_api_key,
+        reasoning_effort=settings.agent_llm_reasoning_effort,
     )
     executor = PostgresQueryExecutor(
         engine, settings.agent_statement_timeout_seconds, settings.agent_max_rows
@@ -101,6 +103,7 @@ def run(golden_path: Path, settings: Settings) -> int:
         executor,
         PostgresSchemaIntrospector(engine).introspect(),
         load_notes(),
+        PostgresReferenceValues(engine),
         ConversationStore(len(items), timedelta(hours=1)),
         max_retries=settings.agent_max_retries,
         summary_rows=settings.agent_summary_rows,
@@ -134,7 +137,8 @@ def run(golden_path: Path, settings: Settings) -> int:
 def _print_result(item: ItemResult) -> None:
     mark = "ok  " if item.correct else "FAIL"
     detail = "" if item.correct else f" ({item.reason})"
-    print(f"{mark} {item.id}: {item.attempts} attempt(s), {item.latency_seconds:.1f}s{detail}")
+    line = f"{mark} {item.id}: {item.attempts} attempt(s), {item.latency_seconds:.1f}s{detail}"
+    print(line, flush=True)  # flushed: the run takes minutes and is often piped
 
 
 def main(argv: list[str] | None = None) -> int:

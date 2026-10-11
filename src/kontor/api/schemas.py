@@ -293,13 +293,20 @@ class AttemptResponse(BaseModel):
     """One attempt: its SQL, and either the error or the number of rows it returned."""
 
     attempt: int
+    plan: str | None
     sql: str | None
     error: str | None
     rows: int | None
 
     @classmethod
     def from_domain(cls, record: AttemptRecord) -> "AttemptResponse":
-        return cls(attempt=record.attempt, sql=record.sql, error=record.error, rows=record.rows)
+        return cls(
+            attempt=record.attempt,
+            plan=record.plan,
+            sql=record.sql,
+            error=record.error,
+            rows=record.rows,
+        )
 
 
 class AskResponse(BaseModel):

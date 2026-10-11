@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     agent_llm_model: str = ""
     agent_llm_api_key: str = "lm-studio"
     agent_llm_timeout_seconds: float = Field(default=120.0, gt=0)
+    # "none" turns thinking off; thinking models otherwise return empty structured output.
+    agent_llm_reasoning_effort: Literal["none", "minimal", "low", "medium", "high"] = "none"
     agent_max_retries: int = Field(default=2, ge=0)
     agent_summary_rows: int = Field(default=50, ge=1)
     agent_max_turns: int = Field(default=10, ge=1)

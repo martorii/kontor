@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from kontor.domain.agent import FailedAttempt, Summary, Turn
+from kontor.domain.agent import FailedAttempt, SqlDraft, Summary, Turn
 from kontor.domain.errors import LLMInvalidOutputError
 
 
@@ -34,7 +34,7 @@ class FakeAgentLLM:
 
     def __init__(
         self,
-        sql: Sequence[str | Exception] = (),
+        sql: Sequence[str | SqlDraft | Exception] = (),
         summaries: Sequence[Summary | Exception] = (),
     ) -> None:
         self.sql = list(sql)
@@ -48,14 +48,14 @@ class FakeAgentLLM:
         history: Sequence[Turn],
         context: str,
         failed_attempts: Sequence[FailedAttempt],
-    ) -> str:
+    ) -> SqlDraft:
         self.sql_calls.append(SqlCall(question, tuple(history), context, tuple(failed_attempts)))
         if not self.sql:
             raise LLMInvalidOutputError("fake agent LLM has no SQL scripted")
         answer = self.sql.pop(0)
         if isinstance(answer, Exception):
             raise answer
-        return answer
+        return answer if isinstance(answer, SqlDraft) else SqlDraft(answer)
 
     def summarize(
         self,

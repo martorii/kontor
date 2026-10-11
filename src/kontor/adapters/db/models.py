@@ -30,7 +30,7 @@ class Account(Base):
     __tablename__ = "accounts"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    name: Mapped[str] = mapped_column(Text)
+    name: Mapped[str] = mapped_column(Text, comment="Account name as the user sees it.")
     bank: Mapped[str] = mapped_column(Text)
     iban: Mapped[str] = mapped_column(String(34), unique=True)
     currency: Mapped[str] = mapped_column(String(3))
@@ -64,10 +64,19 @@ class Category(Base):
         CheckConstraint("(parent_slug IS NULL) = (kind IS NOT NULL)", name="kind_top_level_only"),
     )
 
-    slug: Mapped[str] = mapped_column(Text, primary_key=True)
-    parent_slug: Mapped[str | None] = mapped_column(ForeignKey("categories.slug"))
+    slug: Mapped[str] = mapped_column(
+        Text,
+        primary_key=True,
+        comment="Top-level slug such as food, or subcategory slug such as food.groceries.",
+    )
+    parent_slug: Mapped[str | None] = mapped_column(
+        ForeignKey("categories.slug"),
+        comment="Top-level category of a subcategory; NULL for top-level categories.",
+    )
     name: Mapped[str] = mapped_column(Text)
-    kind: Mapped[str | None] = mapped_column(Text)
+    kind: Mapped[str | None] = mapped_column(
+        Text, comment="expense, income, transfer or savings; set on top-level categories only."
+    )
 
 
 class Transaction(Base):
@@ -85,19 +94,32 @@ class Transaction(Base):
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     account_id: Mapped[int] = mapped_column(ForeignKey("accounts.id"))
     import_id: Mapped[int] = mapped_column(ForeignKey("imports.id"))
-    booking_date: Mapped[date] = mapped_column(Date)
+    booking_date: Mapped[date] = mapped_column(
+        Date, comment="Date the bank booked the transaction; use it for date filters."
+    )
     value_date: Mapped[date | None] = mapped_column(Date)
-    amount: Mapped[Decimal] = mapped_column(MONEY)
+    amount: Mapped[Decimal] = mapped_column(
+        MONEY, comment="Signed: negative is money leaving the account, positive is money coming in."
+    )
     currency: Mapped[str] = mapped_column(String(3))
     counterparty_raw: Mapped[str] = mapped_column(Text)
-    counterparty_normalized: Mapped[str] = mapped_column(Text)
+    counterparty_normalized: Mapped[str] = mapped_column(
+        Text, comment="Merchant or person, uppercase, without store numbers; match with ILIKE."
+    )
     counterparty_iban: Mapped[str | None] = mapped_column(String(34))
-    purpose: Mapped[str] = mapped_column(Text)
+    purpose: Mapped[str] = mapped_column(
+        Text, comment="Free-text payment reference; match with ILIKE."
+    )
     fingerprint: Mapped[str] = mapped_column(String(64))
     # Any: the raw bank CSV row is free-form JSON that differs per bank format.
     raw_row: Mapped[dict[str, Any]] = mapped_column(JSONB)
-    category_slug: Mapped[str | None] = mapped_column(ForeignKey("categories.slug"))
-    category_source: Mapped[str | None] = mapped_column(Text)
+    category_slug: Mapped[str | None] = mapped_column(
+        ForeignKey("categories.slug"),
+        comment="Subcategory slug (categories.slug), or NULL when uncategorized.",
+    )
+    category_source: Mapped[str | None] = mapped_column(
+        Text, comment="Who set the category: rule, llm or manual; NULL when uncategorized."
+    )
 
 
 class CategorizationEvent(Base):

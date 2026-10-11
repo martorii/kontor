@@ -212,7 +212,7 @@ None for v1. Decided since the first draft: accounts always have an IBAN (§4.2a
 ## 16. Text-to-SQL agent (v2)
 
 - **16.1** The agent answers questions about the user's finances by writing and running its own SQL. It uses **LangGraph**, and its nodes call LM Studio through the existing `openai` client. It ships as **v2.0.0**.
-- **16.2** The agent may write `SELECT` queries against every table and view in `public` except `alembic_version`.
+- **16.2** The agent may write `SELECT` queries against `v_flows`, `transactions`, `accounts` and `categories`. The grants of `kontor_agent` decide this: the report views and the bookkeeping tables (`imports`, `categorization_events`) are not readable, because they misled the agent in the evaluation and `v_flows` covers what they offer. Column comments in the database document the data for the agent (§16.4).
 - **16.3** Safety is enforced in two independent layers:
   - **Database:** queries run in a `READ ONLY` transaction, under `SET LOCAL ROLE kontor_agent` (a `NOLOGIN` role with `SELECT` only), with a statement timeout (default 10 s) and a row cap (default 500, with a `truncated` flag).
   - **Validation:** before execution, **sqlglot** checks that the SQL is exactly one `SELECT` statement, that it references only allowed relations, and that it calls no denylisted functions.
@@ -260,3 +260,4 @@ None for v1. Decided since the first draft: accounts always have an IBAN (§4.2a
 - **2026-10-10** — Agent notes live in the package (`src/kontor/agent_notes.md`), not in `config/` (§16.4).
 - **2026-10-10** — Categorizer LLM settings renamed from `LLM_*` to `CATEGORIZER_LLM_*` (breaking: old names are no longer read). `CATEGORIZER_LLM_BASE_URL` and `CATEGORIZER_LLM_MODEL` are required; the API refuses to start without them. The agent gets its own `AGENT_LLM_BASE_URL` and `AGENT_LLM_MODEL`, also required (§16.8).
 - **2026-10-10** — Agent evaluation decided (§16.9): golden set on synthetic data in a throwaway container, scoring rules, and the empty-result rate.
+- **2026-10-11** — The agent reads only `v_flows`, `transactions`, `accounts` and `categories` (§16.2); column comments document them.

@@ -7,6 +7,7 @@ LLMTimeoutError, for the API to map.
 """
 
 from collections.abc import Callable, Sequence
+from datetime import date
 from decimal import Decimal
 from typing import Literal, TypedDict
 
@@ -14,7 +15,12 @@ import structlog
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 
-from kontor.application.agent_context import prompt_hash, render_schema
+from kontor.application.agent_context import (
+    prompt_hash,
+    render_date_anchors,
+    render_reference,
+    render_schema,
+)
 from kontor.application.agent_conversations import ConversationStore
 from kontor.application.sql_validator import validate_query
 from kontor.domain.agent import (
@@ -37,6 +43,7 @@ from kontor.domain.query import QueryResult
 from kontor.domain.schema import SchemaInfo
 from kontor.ports.agent_llm import AgentLLM
 from kontor.ports.query_executor import QueryExecutor
+from kontor.ports.reference_values import ReferenceValuesSource
 
 log = structlog.get_logger()
 
@@ -48,10 +55,12 @@ _Node = Literal["generate_sql", "validate", "execute", "summarize"]
 
 class _State(TypedDict):
     question: str
+    context: str
     history: tuple[Turn, ...]
     attempts: int
     failed: tuple[FailedAttempt, ...]
     sql: str | None
+    plan: str | None
     error: str | None
     result: QueryResult | None
     summary: Summary | None
@@ -80,7 +89,6 @@ class AgentGraph:
         llm: AgentLLM,
         executor: QueryExecutor,
         allowed_relations: frozenset[str],
-        context: str,
         *,
         max_retries: int,
         summary_rows: int,
@@ -88,18 +96,20 @@ class AgentGraph:
         self._llm = llm
         self._executor = executor
         self._allowed_relations = allowed_relations
-        self._context = context
         self._max_attempts = max_retries + 1
         self._summary_rows = summary_rows
         self._graph = self._build()
 
-    def run(self, question: str, history: Sequence[Turn]) -> AgentAnswer:
+    def run(self, question: str, history: Sequence[Turn], context: str) -> AgentAnswer:
+        """Answer one question. `context` is everything the model knows about the data."""
         initial: _State = {
             "question": question,
+            "context": context,
             "history": tuple(history),
             "attempts": 0,
             "failed": (),
             "sql": None,
+            "plan": None,
             "error": None,
             "result": None,
             "summary": None,
@@ -110,7 +120,7 @@ class AgentGraph:
         result = final["result"]
         # Each attempt fails at most once, so the failures are attempts 1..n in order.
         trace = tuple(
-            AttemptRecord(number, failed.sql, failed.error, None)
+            AttemptRecord(number, failed.sql, failed.error, None, failed.plan)
             for number, failed in enumerate(final["failed"], start=1)
         )
         if summary is None or result is None:
@@ -135,7 +145,9 @@ class AgentGraph:
             attempts=final["attempts"],
             trace=(
                 *trace,
-                AttemptRecord(final["attempts"], final["sql"], None, len(result.rows)),
+                AttemptRecord(
+                    final["attempts"], final["sql"], None, len(result.rows), final["plan"]
+                ),
             ),
         )
 
@@ -161,24 +173,25 @@ class AgentGraph:
         return route
 
     def _fail(
-        self, state: _State, error: str, *, attempt: int, sql: str | None
+        self, state: _State, error: str, *, attempt: int, sql: str | None, plan: str | None
     ) -> dict[str, object]:
         log.info("agent_attempt_failed", attempt=attempt, error=error)
-        return {"error": error, "failed": (*state["failed"], FailedAttempt(sql, error))}
+        failed = FailedAttempt(sql, error, plan)
+        return {"error": error, "failed": (*state["failed"], failed)}
 
     def _generate_sql(self, state: _State) -> dict[str, object]:
         attempt = state["attempts"] + 1
-        update: dict[str, object] = {"attempts": attempt, "sql": None, "error": None}
+        update: dict[str, object] = {"attempts": attempt, "sql": None, "plan": None, "error": None}
         try:
-            sql = self._llm.generate_sql(
-                state["question"], state["history"], self._context, state["failed"]
+            draft = self._llm.generate_sql(
+                state["question"], state["history"], state["context"], state["failed"]
             )
         except LLMInvalidOutputError as exc:
             error = f"unusable model output: {exc}"
-            return update | self._fail(state, error, attempt=attempt, sql=None)
+            return update | self._fail(state, error, attempt=attempt, sql=None, plan=None)
         log.info("agent_sql_generated", attempt=attempt)
-        log.debug("agent_sql", attempt=attempt, sql=sql)
-        return update | {"sql": sql}
+        log.debug("agent_sql", attempt=attempt, plan=draft.plan, sql=draft.sql)
+        return update | {"sql": draft.sql, "plan": draft.plan}
 
     def _validate(self, state: _State) -> dict[str, object]:
         assert state["sql"] is not None  # routed here only after SQL was generated
@@ -186,7 +199,9 @@ class AgentGraph:
             validate_query(state["sql"], self._allowed_relations)
         except UnsafeQueryError as exc:
             error = f"rejected by the validator: {exc}"
-            return self._fail(state, error, attempt=state["attempts"], sql=state["sql"])
+            return self._fail(
+                state, error, attempt=state["attempts"], sql=state["sql"], plan=state["plan"]
+            )
         return {}
 
     def _execute(self, state: _State) -> dict[str, object]:
@@ -195,10 +210,14 @@ class AgentGraph:
             result = self._executor.execute(state["sql"])
         except QueryTimeoutError as exc:
             error = f"the query timed out: {exc}"
-            return self._fail(state, error, attempt=state["attempts"], sql=state["sql"])
+            return self._fail(
+                state, error, attempt=state["attempts"], sql=state["sql"], plan=state["plan"]
+            )
         except QueryExecutionError as exc:
             error = f"Postgres error: {exc}"
-            return self._fail(state, error, attempt=state["attempts"], sql=state["sql"])
+            return self._fail(
+                state, error, attempt=state["attempts"], sql=state["sql"], plan=state["plan"]
+            )
         log.info(
             "agent_sql_executed",
             attempt=state["attempts"],
@@ -226,7 +245,11 @@ class AgentGraph:
 
 
 class AgentService:
-    """Answers questions within conversations, using the notes and the introspected schema."""
+    """Answers questions within conversations.
+
+    The model's context is the notes and the schema (fixed at startup), plus the category tree,
+    the account names and date ranges, which are read for every question because they change.
+    """
 
     def __init__(
         self,
@@ -234,23 +257,38 @@ class AgentService:
         executor: QueryExecutor,
         schema: SchemaInfo,
         notes: str,
+        reference: ReferenceValuesSource,
         store: ConversationStore,
         *,
         max_retries: int,
         summary_rows: int,
+        today: Callable[[], date] = date.today,
     ) -> None:
         schema_text = render_schema(schema)
         self._llm = llm
         self._store = store
+        self._reference = reference
+        self._today = today
+        self._static_context = f"{notes}\n\n# Schema\n\n{schema_text}"
         self._graph = AgentGraph(
             llm,
             executor,
             schema.allowed_relations,
-            f"{notes}\n\n# Schema\n\n{schema_text}",
             max_retries=max_retries,
             summary_rows=summary_rows,
         )
+        # The reference values and dates are data, not prompt: they stay out of the hash.
         self.prompt_hash = prompt_hash(llm.prompt_text, notes, schema_text)
+
+    def context(self) -> str:
+        """The full context for the next question."""
+        return "\n\n".join(
+            [
+                self._static_context,
+                render_reference(self._reference.load()),
+                render_date_anchors(self._today()),
+            ]
+        )
 
     @property
     def model_name(self) -> str:
@@ -269,7 +307,7 @@ class AgentService:
             history = ()
         with structlog.contextvars.bound_contextvars(conversation_id=conversation_id):
             log.info("agent_question", turns=len(history))
-            answer = self._graph.run(question, history)
+            answer = self._graph.run(question, history, self.context())
             log.info("agent_answered", status=answer.status, attempts=answer.attempts)
         self._store.append(conversation_id, Turn(question, answer.sql, answer.answer))
         return conversation_id, answer

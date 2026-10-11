@@ -155,6 +155,16 @@ v1 (Steps 01–22) is complete. Its plan lives in the git history of this file.
   - an `@pytest.mark.llm` smoke test over 3 golden questions
 - **Pass gate** — `make eval-agent` runs locally and writes a result file with every metric filled in.
 
+### Step 30a — Agent improvements
+- [x] **Scope** (one commit per block, and one `make eval-agent` run after each)
+  1. the category tree, the account names, and literal date ranges in the agent's context, read per question through a `ReferenceValues` port
+  2. few-shot question → SQL examples (none from the golden set) and a `plan` field before the SQL
+  3. column comments through a migration, shown in the schema text; `kontor_agent` loses access to `imports` and `categorization_events` (CONTRACT §16.2)
+  4. a model comparison in LM Studio, with no code changes
+- **Pass gate**
+  - Tests for every block.
+  - The eval results from the baseline through each block, recorded in the PR. There is no fixed target; a block that makes things worse is dropped or reworked.
+
 ### Step 31 — v2 release
 - [ ] **Scope**
   - a README section on the agent: model choice, `AGENT_*` settings, and the safety model

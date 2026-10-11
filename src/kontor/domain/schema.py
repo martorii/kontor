@@ -8,6 +8,7 @@ class Column:
 
     name: str
     type: str
+    comment: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
