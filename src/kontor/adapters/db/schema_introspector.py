@@ -9,7 +9,8 @@ from kontor.domain.schema import Column, ForeignKey, Relation, SchemaInfo
 # Tables and views in `public` the agent role may SELECT, with their columns in table order.
 # The role's grants (Step 24 migration) decide what is listed, so `alembic_version` drops out.
 RELATIONS_SQL = """
-SELECT c.relname, c.relkind, a.attname, format_type(a.atttypid, a.atttypmod)
+SELECT c.relname, c.relkind, a.attname, format_type(a.atttypid, a.atttypmod),
+       col_description(c.oid, a.attnum)
 FROM pg_class c
 JOIN pg_namespace n ON n.oid = c.relnamespace
 JOIN pg_attribute a ON a.attrelid = c.oid AND a.attnum > 0 AND NOT a.attisdropped
@@ -51,7 +52,7 @@ class PostgresSchemaIntrospector:
             Relation(
                 name=name,
                 kind=KINDS[kind],
-                columns=tuple(Column(name=row[2], type=row[3]) for row in rows),
+                columns=tuple(Column(name=row[2], type=row[3], comment=row[4]) for row in rows),
             )
             for (name, kind), rows in groupby(column_rows, key=lambda row: (row[0], row[1]))
         )

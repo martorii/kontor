@@ -32,10 +32,11 @@ schema listing that follows them says which tables, views and columns exist.
   `sub_slug`, `sub_name`, `'uncategorized'` when there is none), and `year` and `month`.
   Spending is `SUM(-amount)` over `flow = 'expense'`; income is `SUM(amount)` over
   `flow = 'income'`.
-- Prefer `v_flows` and the report views over the raw `transactions` table for any question
-  about spending or income:
-  - `v_monthly_category_spending`: spending per month and category (`spent` is positive).
-  - `v_merchant_spending`: spending per day and merchant (`spent` is positive).
+- `flow` is never `transfer` or `savings`: those are `excluded`. Find transfers and savings
+  by their slugs, and remember that money moving out of an account is negative.
+- Refunds alone are the positive amounts in an expense category (`amount > 0`).
+- Use `v_flows` for every question about spending or income. Use `transactions` only for
+  what `v_flows` lacks, such as `purpose` or `category_source`.
 
 ## Merchants and text
 
@@ -51,8 +52,7 @@ schema listing that follows them says which tables, views and columns exist.
 - For "last month", "this year" and similar phrases, use the literal ranges in the Dates
   section below; do not compute dates from `current_date` yourself.
 
-## Accounts and imports
+## Accounts
 
 - `accounts` holds each bank account with its `name`, `iban` and `currency`.
-- `imports` records each uploaded file. `categorization_events` is the history of every
-  categorization; the current category is on `transactions`.
+- The current category of a transaction, and who set it, are on `transactions`.

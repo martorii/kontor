@@ -110,3 +110,20 @@ def test_date_anchors_cross_the_year_in_january_and_december() -> None:
 
     assert "- last month: booking_date >= '2026-12-01' AND booking_date < '2027-01-01'" in january
     assert "- this month: booking_date >= '2026-12-01' AND booking_date < '2027-01-01'" in december
+
+
+def test_render_schema_prints_column_comments() -> None:
+    schema = SchemaInfo(
+        relations=(
+            Relation(
+                "v_flows",
+                "view",
+                (Column("amount", "numeric(12,2)", "Signed."), Column("month", "integer")),
+            ),
+        ),
+        foreign_keys=(),
+    )
+
+    assert render_schema(schema) == (
+        "view v_flows\n  amount numeric(12,2) -- Signed.\n  month integer"
+    )

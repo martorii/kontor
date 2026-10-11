@@ -5,7 +5,7 @@ from datetime import date
 from importlib.resources import files
 
 from kontor.domain.reference import CategoryRef, ReferenceValues
-from kontor.domain.schema import SchemaInfo
+from kontor.domain.schema import Column, SchemaInfo
 
 
 def load_notes() -> str:
@@ -17,7 +17,7 @@ def render_schema(schema: SchemaInfo) -> str:
     """One block per relation, then the foreign keys. Sorted, so the text and hash are stable."""
     blocks = []
     for relation in sorted(schema.relations, key=lambda relation: relation.name):
-        columns = "\n".join(f"  {column.name} {column.type}" for column in relation.columns)
+        columns = "\n".join(_render_column(column) for column in relation.columns)
         blocks.append(f"{relation.kind} {relation.name}\n{columns}")
     keys = sorted(
         f"  {key.table}.{key.column} -> {key.ref_table}.{key.ref_column}"
@@ -26,6 +26,11 @@ def render_schema(schema: SchemaInfo) -> str:
     if keys:
         blocks.append("foreign keys\n" + "\n".join(keys))
     return "\n\n".join(blocks)
+
+
+def _render_column(column: Column) -> str:
+    line = f"  {column.name} {column.type}"
+    return f"{line} -- {column.comment}" if column.comment else line
 
 
 def prompt_hash(system_prompt: str, notes: str, schema_text: str) -> str:
